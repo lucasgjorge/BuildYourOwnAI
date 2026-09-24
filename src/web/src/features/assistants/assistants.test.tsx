@@ -186,7 +186,9 @@ describe('screen states added in verification round 2', () => {
 
     renderApp('/assistants')
 
-    expect(await screen.findByText('Carregando...')).toBeInTheDocument()
+    // The page heading only renders after the session guard resolved, so the loader seen now is the list's own.
+    expect(await screen.findByRole('heading', { name: 'Minhas IAs' })).toBeInTheDocument()
+    expect(screen.getByText('Carregando...')).toBeInTheDocument()
     release()
     expect(await screen.findByRole('link', { name: 'Suporte' })).toBeInTheDocument()
     expect(screen.queryByText('Carregando...')).not.toBeInTheDocument()
@@ -222,5 +224,57 @@ describe('screen states added in verification round 2', () => {
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Formato não suportado. Use .pdf, .txt, .md.')
+  })
+})
+
+describe('states added in verification round 3', () => {
+  // C50
+  it('session guard states: loading while the session is unknown', async () => {
+    const { gate, release } = deferred()
+    server.use(
+      http.get('*/api/auth/manage/info', async () => {
+        await gate
+        return HttpResponse.json({ email: 'ana@test.local', isEmailConfirmed: false })
+      }),
+      http.get('*/api/assistants', () => HttpResponse.json([])),
+    )
+
+    renderApp('/assistants')
+
+    expect(await screen.findByText('Carregando...')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Minhas IAs' })).not.toBeInTheDocument()
+    release()
+    expect(await screen.findByRole('heading', { name: 'Minhas IAs' })).toBeInTheDocument()
+  })
+
+  // C50
+  it('session guard states: a non-401 failure shows the problem title and stays', async () => {
+    server.use(http.get('*/api/auth/manage/info', () => problem(500, 'Servidor indisponível')))
+
+    renderApp('/assistants')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Servidor indisponível')
+    expect(screen.getByTestId('location')).toHaveTextContent('/assistants')
+  })
+
+  // C51
+  it('create button shows processing', async () => {
+    const { gate, release } = deferred()
+    server.use(
+      loggedIn(),
+      http.get('*/api/assistants', () => HttpResponse.json([])),
+      http.post('*/api/assistants', async () => {
+        await gate
+        return HttpResponse.json({ ...assistant, documentCount: 0 }, { status: 201 })
+      }),
+    )
+    const { user } = renderApp('/assistants')
+
+    await user.type(await screen.findByLabelText('Nome'), 'Minha IA')
+    await user.click(screen.getByRole('button', { name: 'Criar IA' }))
+
+    expect(await screen.findByRole('button', { name: 'Processando...' })).toBeDisabled()
+    release()
+    expect(await screen.findByRole('button', { name: 'Criar IA' })).toBeEnabled()
   })
 })

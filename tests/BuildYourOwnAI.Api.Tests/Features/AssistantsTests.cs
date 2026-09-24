@@ -59,8 +59,10 @@ public sealed class AssistantsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
         Assert.Equal(0, (await JsonAsync(empty)).GetArrayLength());
 
-        var a = await CreateAssistantAsync(client, "A", "instrucoes de A");
-        var b = await CreateAssistantAsync(client, "B");
+        var createdA = await JsonAsync(await client.PostAsJsonAsync("/api/assistants", new { name = "A", instructions = "instrucoes de A" }));
+        var createdB = await JsonAsync(await client.PostAsJsonAsync("/api/assistants", new { name = "B" }));
+        var a = createdA.GetProperty("id").GetGuid();
+        var b = createdB.GetProperty("id").GetGuid();
         await UploadOkAsync(client, a, "a.txt", "conteudo do documento A");
 
         var list = await JsonAsync(await client.GetAsync("/api/assistants"));
@@ -74,7 +76,9 @@ public sealed class AssistantsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(System.Text.Json.JsonValueKind.Null, list[0].GetProperty("instructions").ValueKind);
         Assert.Equal("A", list[1].GetProperty("name").GetString());
         Assert.Equal("instrucoes de A", list[1].GetProperty("instructions").GetString());
-        Assert.True(list[0].GetProperty("createdAt").GetDateTimeOffset() >= list[1].GetProperty("createdAt").GetDateTimeOffset());
+        // Postgres keeps microseconds, .NET ticks are 100 ns: the listed value must match creation within 1 ms.
+        AssertSameInstant(createdB.GetProperty("createdAt").GetDateTimeOffset(), list[0].GetProperty("createdAt").GetDateTimeOffset());
+        AssertSameInstant(createdA.GetProperty("createdAt").GetDateTimeOffset(), list[1].GetProperty("createdAt").GetDateTimeOffset());
     }
 
     public static TheoryData<string, string, bool> IdRoutes() => new()
@@ -158,7 +162,11 @@ public sealed class AssistantsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(id, body.GetProperty("id").GetGuid());
         Assert.Equal("Suporte", body.GetProperty("name").GetString());
         Assert.Equal("Responda em portugues", body.GetProperty("instructions").GetString());
-        Assert.True(body.TryGetProperty("createdAt", out _));
+        var listed = (await JsonAsync(await client.GetAsync("/api/assistants")))[0];
+        AssertSameInstant(listed.GetProperty("createdAt").GetDateTimeOffset(), body.GetProperty("createdAt").GetDateTimeOffset());
         Assert.Equal(2, body.GetProperty("documentCount").GetInt32());
     }
+
+    private static void AssertSameInstant(DateTimeOffset expected, DateTimeOffset actual) =>
+        Assert.InRange((actual - expected).Duration(), TimeSpan.Zero, TimeSpan.FromMilliseconds(1));
 }

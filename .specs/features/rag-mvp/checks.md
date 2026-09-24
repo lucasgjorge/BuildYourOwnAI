@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/rag-mvp/plan.md`
 
-49 checks in 7 slices · 9 one-way doors · 1 open, of which 0 block (1 blocks go-live)
+51 checks in 7 slices · 9 one-way doors · 1 open, of which 0 block (1 blocks go-live)
 
 Comandos de prova:
 
@@ -173,6 +173,12 @@ Proof: `npm --prefix src/web run test -- -t "empty document list shows only uplo
 **C49** - Um upload respondido com problem details mostra o `title` na página de assistente (AC 33, Observable `/assistants/{id}` error) ✓
 Proof: `npm --prefix src/web run test -- -t "upload error shows problem title"`
 
+**C50** - Enquanto `GET /api/auth/manage/info` não responde, qualquer rota protegida mostra "Carregando..."; se ele responde `500` com problem details, a página mostra o `title` em um alerta e **não** redireciona para `/login` (Test policy - `RequireAuth`) ✓
+Proof: `npm --prefix src/web run test -- -t "session guard states"`
+
+**C51** - Em `/assistants`, enquanto `POST /api/assistants` está pendente, o botão de criar fica desabilitado com o texto "Processando..." (Observable `/assistants` loading) ✓
+Proof: `npm --prefix src/web run test -- -t "create button shows processing"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -203,7 +209,8 @@ Proof: `npm --prefix src/web run test -- -t "upload error shows problem title"`
 | falhas de provedor (3) | embedding no upload C18 · embedding no ask C27 · chat no ask C27 | - |
 | rate limit (3) | 20º C28 · 21º C28 · outro usuário C28 | - |
 | telas (4) | `/login` C29, C45 · `/register` C29, C46 · `/assistants` C30, C34, C47 · `/assistants/{id}` C31, C32, C33, C34, C35, C48, C49 | - |
-| estados por tela do Observable (11) | `/login` erro C45 · `/login` carregando C45 · `/register` erro C46 · `/register` carregando C46 · `/assistants` vazio C30 · `/assistants` carregando C47 · `/assistants` erro C33 · `/assistants` sem sessão C29 · `/assistants/{id}` vazio C48 · `/assistants/{id}` erro C33, C49 · `/assistants/{id}` carregando C35 | - |
+| guard de sessão `RequireAuth` (3) | carregando C50 · erro não-401 C50 · sem sessão C29 | - |
+| estados por tela do Observable (11) | `/login` erro C45 · `/login` carregando C45 · `/register` erro C46 · `/register` carregando C46 · `/assistants` vazio C30 · `/assistants` carregando C47, C51 · `/assistants` erro C33 · `/assistants` sem sessão C29 · `/assistants/{id}` vazio C48 · `/assistants/{id}` erro C33, C49 · `/assistants/{id}` carregando C35 | - |
 | ações destrutivas na UI (2) | apagar assistente C34 · apagar documento C34 | - |
 | ações em andamento na UI (2) | upload C35 · pergunta C35 | - |
 | erro exibido na UI (5) | criar IA C33 · pergunta C33 · upload C49 · login C45 · registro C46 | - |
@@ -254,3 +261,4 @@ Cost: 1 classe de teste de unidade (chunker); o resto já estava na fronteira. A
 - **Settled mid-build:** nenhum esclarecimento do usuário durante o build. Door 5b adicionada ao `Landing` antes do código (filtro de dono também em `Document`/`Chunk`)
 - **Abandoned:** ambiente jsdom nos testes do web - o `FormData` do jsdom não é aceito pelo `fetch` do Node, então o upload nunca chegava ao MSW; trocado por happy-dom. `vi.spyOn(window, 'confirm')` - happy-dom não define `confirm`; o teste atribui um `vi.fn()`
 - **Round 2 fix (after Verifier FAIL at `bef8502`):** C45-C49 adicionados para os estados de tela do `Observable` sem prova; asserções de C9 (`name`, `instructions`, `createdAt`), C43 (`isEmailConfirmed`) e C40 (propriedades estruturadas do log) reforçadas; login `401` passa a mostrar "E-mail ou senha inválidos."
+- **Round 3 fix (after Verifier FAIL at `0747ee0`):** C47 deixa de casar com o loader do guard (espera o heading da página antes); C50 (`RequireAuth` carregando e erro não-401) e C51 (botão de criar "Processando...") adicionados; `createdAt` de C9 e C44 comparado por valor (tolerância de 1 ms pela precisão de microssegundos do Postgres)
