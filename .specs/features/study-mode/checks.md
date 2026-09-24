@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/study-mode/plan.md`
 
-29 checks in 3 slices (a numeração pula C17) · 3 one-way doors · 0 open
+30 checks in 3 slices (a numeração pula C17) · 3 one-way doors · 0 open
 
 Comandos de prova:
 
@@ -37,10 +37,10 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C7** - Organização sem documentos responde `422` e o modelo não recebe chamada (AC 7) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~StudySessionsTests.No_chunks_returns_422"`
 
-**C8** - Para cada item inválido (trecho inexistente, trecho repetido, 3 alternativas, 5 alternativas, alternativa vazia, alternativas repetidas, `correct` = 4, `correct` = -1, `prompt` vazio), misturado a um item válido, a sessão grava só a pergunta válida (AC 8) ✓
+**C8** - Para cada item inválido (trecho inexistente, trecho repetido, 3 alternativas, 5 alternativas, alternativa vazia, alternativas repetidas, `correct` = 4, `correct` = -1, `prompt` vazio, `chunk` como texto, `correct` como texto), misturado a um item válido, a sessão grava só a pergunta válida (AC 8) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~StudySessionsTests.Invalid_model_items_are_discarded"`
 
-**C9** - Falha do modelo, resposta que não é JSON e JSON sem nenhum item válido respondem `502` sem a mensagem do provedor, e `study_sessions` não ganha linha (AC 9) ✓
+**C9** - Falha do modelo, resposta que não é JSON, JSON cujo topo é uma lista e JSON sem nenhum item válido respondem `502` sem a mensagem do provedor, e `study_sessions` não ganha linha (AC 9) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~StudySessionsTests.Model_failure_returns_502_without_saving"`
 
 **C10** - Com 20 perguntas cuja certa vem sempre na posição 0 do modelo, cada `correct_option` gravado aponta para o texto certo ("certa n") e as posições gravadas não são todas iguais (AC 10) ✓
@@ -104,8 +104,13 @@ Proof: `npm --prefix src/web run test -- -t "wrong answer shows the right one wi
 **C29** - "Próxima pergunta" fecha a prévia e mostra "Pergunta 2 de 3"; depois da última, mostra "Você acertou 1 de 3" e "Estudar de novo" volta à escolha de documentos (AC 24, AC 25) ✓
 Proof: `npm --prefix src/web run test -- -t "study moves through questions to the result"`
 
-**C30** - Um `502` na criação mostra o `title` e mantém os documentos e a quantidade escolhidos; um `409` na resposta mostra o `title` (AC 26) ✓
+**C30** - Um `502` na criação mostra o `title` e mantém os documentos e a quantidade escolhidos; um `409` na resposta mostra o `title` e mantém a alternativa escolhida e "Responder" habilitado (AC 26) ✓
 Proof: `npm --prefix src/web run test -- -t "study errors show title and keep choices"`
+
+### Round 2 (after Verifier FAIL at `273dd9c`)
+
+**C31** - 8 respostas simultâneas à mesma pergunta resultam em exatamente um `200` e sete `409`, e o `chosen_option` gravado é o da resposta aceita (door 1, Swept concurrency) ✓
+Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~StudyAnswerTests.Simultaneous_answers_only_one_wins"`
 
 ## Coverage
 
@@ -115,8 +120,9 @@ Proof: `npm --prefix src/web run test -- -t "study errors show title and keep ch
 | `POST /api/study-sessions/{sessionId}/questions/{questionId}/answer` statuses (5) | 200 C12 · 400 C15 · 401 C20 · 404 C16 · 409 C14 | - |
 | `questionCount` (7 valores) | 0 C5 · 3 C5 · 5 C5 · 7 C5 · 10 C5 · 20 C5 · 21 C5 | - |
 | `documentIds` (4 formas) | ausente C2 · vazio C5 · da organização C1 · de outra organização C6 | - |
-| itens inválidos do modelo (9) | trecho inexistente C8 · trecho repetido C8 · 3 alternativas C8 · 5 alternativas C8 · alternativa vazia C8 · alternativas repetidas C8 · correct 4 C8 · correct -1 C8 · prompt vazio C8 | - |
-| falhas do modelo (3) | exceção C9 · não-JSON C9 · nenhum válido C9 | - |
+| itens inválidos do modelo (11) | trecho inexistente C8 · trecho repetido C8 · 3 alternativas C8 · 5 alternativas C8 · alternativa vazia C8 · alternativas repetidas C8 · correct 4 C8 · correct -1 C8 · prompt vazio C8 · chunk como texto C8 · correct como texto C8 | - |
+| falhas do modelo (4) | exceção C9 · não-JSON C9 · topo que não é objeto C9 · nenhum válido C9 | - |
+| respostas simultâneas (1) | 8 ao mesmo tempo C31 | - |
 | `option` (4 bordas) | -1 C15 · 0..3 certa C12 · 0..3 errada C13 · 4 C15 | - |
 | 404 da resposta (3) | outro usuário C16 · inexistente C16 · pergunta de outra sessão C16 | - |
 | estados da aba (8) | sem documentos C24 · escolha C23 · gerando C25 · pergunta C26 · certo C27 · errado C28 · fim C29 · erro C30 | - |
@@ -136,7 +142,7 @@ Os specs anteriores já respondem. Sem linhas novas.
 - failure modes: C9
 - idempotency: C14 - responder de novo não troca a resposta
 - authorization: C6, C16, C20; rate limit C11
-- concurrency: C14 - a gravação da resposta só acontece se `chosen_option` ainda é nulo (UPDATE condicional), então duas respostas simultâneas não sobrescrevem
+- concurrency: C31 - 8 respostas simultâneas à mesma pergunta: uma `200`, as outras `409`, e a gravada é a da `200` (UPDATE condicional em `chosen_option` nulo)
 - data lifecycle: C19
 - dependency failure: C9
 - state transitions: C12, C14 (não respondida -> respondida, sem volta)
@@ -149,3 +155,4 @@ Os specs anteriores já respondem. Sem linhas novas.
 - **Boundary:** C1-C21 fechados em `fba249a` (Api); C22-C30 fechados em `83844bd` (web)
 - **Settled mid-build:** o build foi pausado para planejar o admin-usage (pedido do usuário) e retomado. Na última pergunta o botão é "Ver resultado" (as outras mostram "Próxima pergunta"), para o usuário ver a correção da última antes do resultado
 - **Abandoned:** cores de acerto via `--color-lane-6`: as variáveis de lane ficam fora do `@theme` (source-preview), então `border-lane-6` não gera CSS; entraram os tokens `--color-success`/`--color-success-soft` no tema. O gerador de palavras dos testes cortava 9 caracteres de uma palavra de 8
+- **Round 2 fix (after Verifier FAIL at `273dd9c`):** um JSON do modelo com tipo errado (`"chunk": "1"`, `"correct": "0"`, topo em lista) virava `500`: `TryGetInt32` lança fora de número e só `JsonException` era capturada; agora tipo errado é item inválido (C8) ou `502` (C9). C31 adicionado para respostas simultâneas. C30 passa a afirmar que a alternativa escolhida continua marcada depois de um erro

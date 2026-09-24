@@ -103,19 +103,20 @@ public static class CreateStudySession
         try
         {
             using var document = JsonDocument.Parse(text);
-            if (!document.RootElement.TryGetProperty("questions", out var items) || items.ValueKind != JsonValueKind.Array)
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("questions", out var items) || items.ValueKind != JsonValueKind.Array)
                 return valid;
 
             foreach (var item in items.EnumerateArray())
             {
                 if (item.ValueKind != JsonValueKind.Object
-                    || !item.TryGetProperty("chunk", out var chunk) || !chunk.TryGetInt32(out var chunkNumber)
+                    || !item.TryGetProperty("chunk", out var chunk) || !IsInt(chunk, out var chunkNumber)
                     || chunkNumber < 1 || chunkNumber > chunkCount || valid.Any(v => v.Chunk == chunkNumber)
                     || !item.TryGetProperty("prompt", out var prompt) || prompt.ValueKind != JsonValueKind.String
                     || string.IsNullOrWhiteSpace(prompt.GetString())
                     || !item.TryGetProperty("options", out var options) || options.ValueKind != JsonValueKind.Array
                     || options.GetArrayLength() != StudyQuestion.OptionCount
-                    || !item.TryGetProperty("correct", out var correct) || !correct.TryGetInt32(out var correctIndex)
+                    || !item.TryGetProperty("correct", out var correct) || !IsInt(correct, out var correctIndex)
                     || correctIndex is < 0 or >= StudyQuestion.OptionCount)
                     continue;
 
@@ -133,6 +134,13 @@ public static class CreateStudySession
         {
         }
         return valid;
+    }
+
+    // TryGetInt32 throws on a non-number (e.g. "chunk": "1"); a wrong type is just an invalid item.
+    private static bool IsInt(JsonElement element, out int value)
+    {
+        value = 0;
+        return element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out value);
     }
 
     private static List<ChatMessage> BuildPrompt(List<SampledChunk> chunks)

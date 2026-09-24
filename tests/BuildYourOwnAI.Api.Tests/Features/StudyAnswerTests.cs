@@ -118,4 +118,20 @@ public sealed class StudyAnswerTests(ApiFactory factory) : StudyTestBase(factory
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         Assert.Null(await ChosenAsync(stored.Question));
     }
+
+    // C31
+    [Fact]
+    public async Task Simultaneous_answers_only_one_wins()
+    {
+        var (client, stored) = await QuestionAsync();
+
+        // Eight answers at once: without the conditional update, several would read "not answered" and all write.
+        var responses = await Task.WhenAll(Enumerable.Range(0, 8)
+            .Select(i => AnswerAsync(client, stored.Session, stored.Question, i % 4)));
+
+        var accepted = Assert.Single(responses, r => r.StatusCode == HttpStatusCode.OK);
+        Assert.All(responses.Where(r => r != accepted), r => Assert.Equal(HttpStatusCode.Conflict, r.StatusCode));
+        var chosen = (await JsonAsync(accepted)).GetProperty("chosenOption").GetInt32();
+        Assert.Equal((short)chosen, await ChosenAsync(stored.Question));
+    }
 }

@@ -216,7 +216,8 @@ public sealed class StudySessionsTests(ApiFactory factory) : StudyTestBase(facto
     }
 
     public static TheoryData<string> InvalidKinds() =>
-        ["missing-chunk", "repeated-chunk", "three-options", "five-options", "empty-option", "repeated-options", "correct-4", "correct-minus-1", "empty-prompt"];
+        ["missing-chunk", "repeated-chunk", "three-options", "five-options", "empty-option", "repeated-options", "correct-4", "correct-minus-1", "empty-prompt",
+         "chunk-as-text", "correct-as-text"];
 
     // C8
     [Theory]
@@ -237,6 +238,8 @@ public sealed class StudySessionsTests(ApiFactory factory) : StudyTestBase(facto
             "repeated-options" => Item(2, options: ["a", "b", "A", "d"]),
             "correct-4" => Item(2, correct: 4),
             "correct-minus-1" => Item(2, correct: -1),
+            "chunk-as-text" => new { chunk = "2", prompt = "Pergunta?", options = new[] { "certa", "a", "b", "c" }, correct = 0, explanation = "x" },
+            "correct-as-text" => new { chunk = 2, prompt = "Pergunta?", options = new[] { "certa", "a", "b", "c" }, correct = "0", explanation = "x" },
             _ => Item(2, prompt: " "),
         };
 
@@ -253,6 +256,7 @@ public sealed class StudySessionsTests(ApiFactory factory) : StudyTestBase(facto
     [InlineData("throws")]
     [InlineData("not-json")]
     [InlineData("no-valid-item")]
+    [InlineData("top-level-array")]
     public async Task Model_failure_returns_502_without_saving(string failure)
     {
         var client = await NewUserClientAsync();
@@ -264,6 +268,7 @@ public sealed class StudySessionsTests(ApiFactory factory) : StudyTestBase(facto
             prompt => failure switch
             {
                 "not-json" => "aqui estão suas perguntas",
+                "top-level-array" => JsonSerializer.Serialize(new[] { Item(1) }),
                 "no-valid-item" => JsonSerializer.Serialize(new { questions = new[] { Item(1, correct: 9) } }),
                 _ => FakeChatClient.DefaultStudyReply(prompt),
             },

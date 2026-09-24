@@ -227,5 +227,7 @@ describe('study mode', () => {
     await user.click(option('A1'))
     await user.click(screen.getByRole('button', { name: 'Responder' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Esta pergunta já foi respondida.')
+    expect(option('A1')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Responder' })).toBeEnabled()
   })
 })
