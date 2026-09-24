@@ -1,1 +1,79 @@
 @import "tailwindcss";
+
+/* Identity: a switchboard. Jev (jade) connects each question to the lane of the AI that answers it. */
+@theme {
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-fog: #f3f5f8;
+  --color-surface: #ffffff;
+  --color-ink: #16202e;
+  --color-muted: #5e6b7c;
+  --color-line: #d9dfe7;
+  --color-jev: #0e7c66;
+  --color-jev-soft: #e2f1ec;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+
+  /* One lane per AI of an organization, by position. */
+  --color-lane-1: #c2410c;
+  --color-lane-2: #6d28d9;
+  --color-lane-3: #1d4ed8;
+  --color-lane-4: #b45309;
+  --color-lane-5: #be185d;
+  --color-lane-6: #15803d;
+}
+
+html,
+body {
+  background: var(--color-fog);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-jev);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The signature: the routing line draws once when an answer arrives. */
+@keyframes route-draw {
+  from { stroke-dashoffset: 60; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes entry-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.route-line {
+  stroke-dasharray: 60;
+  animation: route-draw 420ms ease-out both;
+}
+
+/* A path drawn with pathLength="1": the home page's switchboard. */
+@keyframes route-path {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+.route-path {
+  stroke-dasharray: 1;
+  animation: route-path 900ms 200ms ease-out both;
+}
+
+.entry-rise {
+  animation: entry-rise 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -14,7 +14,8 @@ Checks de tela do jev-gaps afetados (a tela mudou por decisão aprovada, as asse
 
 - C56-C59 (página da organização) e os rag-mvp migrados em `organizations.test.tsx` são re-apontados para a aba Base (`/organizations/{id}/knowledge`). C58 (apagar organização) passa a ser feito na aba Base (AC 24)
 - C60 (página da IA) é substituído por C23 deste plano: `/assistants/{id}` redireciona para o chat com a IA fixada
-- C30-C31 (Jev global): o botão de alternativa passa a se chamar "Perguntar a <IA>" e a resposta nova é acrescentada à thread (AC 11 e AC 25). As asserções de conteúdo continuam as mesmas
+- C30-C34 (Jev global): o botão de alternativa passa a se chamar "Perguntar a <IA>" e a resposta nova é acrescentada à thread (AC 11 e AC 25); o campo passa a ser "Mensagem" com o botão "Enviar", e "Jev está escolhendo…" aparece na thread em vez de no botão. As asserções de conteúdo continuam as mesmas; escolher um candidato do `clarify` substitui a pergunta "Qual destas IAs…" pela resposta, como no jev-gaps
+- rag-mvp C33/C35 da página de pergunta (erro e "Processando..." no ask) são substituídos por C18 e C19 deste plano; C47/C51 (lista carregando, criar organização) seguem em `organizations.test.tsx` na entrada `/organizations`
 
 ## Checks
 
@@ -46,83 +47,83 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 
 ### S2 - Chat como tela principal · ~10 files · ~60 KB · ~15k
 
-**C9** - Logado com organizações, `/organizations` leva para `/organizations/o1` (a primeira da lista) e mostra a aba Conversa com o campo "Mensagem" (AC 7)
+**C9** - Logado com organizações, `/organizations` leva para `/organizations/o1` (a primeira da lista) e mostra a aba Conversa com o campo "Mensagem" (AC 7) ✓
 Proof: `npm --prefix src/web run test -- -t "organizations opens the first organization chat"`
 
-**C10** - Logado sem organizações, `/organizations` mostra "Crie sua primeira organização"; criar leva para `/organizations/{novoId}/knowledge` (AC 8)
+**C10** - Logado sem organizações, `/organizations` mostra "Crie sua primeira organização"; criar leva para `/organizations/{novoId}/knowledge` (AC 8) ✓
 Proof: `npm --prefix src/web run test -- -t "no organizations shows create and lands on knowledge"`
 
-**C11** - A barra lateral (`navigation` "Principal") tem um link por organização para `/organizations/{id}`, "Nova organização", "Jev (todas)" -> `/jev`, "Lacunas (2)" -> `/gaps` e o botão "Sair" (AC 9)
+**C11** - A barra lateral (`navigation` "Principal") tem um link por organização para `/organizations/{id}`, "Nova organização", "Jev (todas)" -> `/jev`, "Lacunas (2)" -> `/gaps` e o botão "Sair" (AC 9) ✓
 Proof: `npm --prefix src/web run test -- -t "sidebar lists organizations and destinations"`
 
-**C12** - Com alvo "Jev decide", enviar chama `POST /api/organizations/o1/jev/ask` com a pergunta; a thread mostra a pergunta, "Respondido por RH", "via Jev", o texto da resposta, o `fileName` da fonte e o botão "Perguntar a Culture" (AC 10)
+**C12** - Com alvo "Jev decide", enviar chama `POST /api/organizations/o1/jev/ask` com a pergunta; a thread mostra a pergunta, "Respondido por RH", "via Jev", o texto da resposta, o `fileName` da fonte e o botão "Perguntar a Culture" (AC 10) ✓
 Proof: `npm --prefix src/web run test -- -t "chat sends to organization jev and shows who answered"`
 
-**C13** - Clicar "Perguntar a Culture" chama `POST /api/assistants/{cultureId}/ask` com a mesma pergunta; a thread passa a ter as duas respostas, "Respondido por RH" e "Respondido por Culture" (AC 11)
+**C13** - Clicar "Perguntar a Culture" chama `POST /api/assistants/{cultureId}/ask` com a mesma pergunta; a thread passa a ter as duas respostas, "Respondido por RH" e "Respondido por Culture" (AC 11) ✓
 Proof: `npm --prefix src/web run test -- -t "asking an alternative appends to the thread"`
 
-**C14** - Fixar "Tech Team" no seletor "Para" e enviar chama `POST /api/assistants/{techId}/ask` (e não o Jev); a resposta mostra "Respondido por Tech Team" sem "via Jev" (AC 12)
+**C14** - Fixar "Tech Team" no seletor "Para" e enviar chama `POST /api/assistants/{techId}/ask` (e não o Jev); a resposta mostra "Respondido por Tech Team" sem "via Jev" (AC 12) ✓
 Proof: `npm --prefix src/web run test -- -t "pinned assistant is asked directly"`
 
-**C15** - `kind=clarify` mostra "Qual destas IAs deve responder?" com um botão por candidato; clicar em "Culture" acrescenta "Respondido por Culture" (AC 13)
+**C15** - `kind=clarify` mostra "Qual destas IAs deve responder?" com um botão por candidato; clicar em "Culture" acrescenta "Respondido por Culture" (AC 13) ✓
 Proof: `npm --prefix src/web run test -- -t "chat clarify lets the user pick"`
 
-**C16** - `kind=noMatch` mostra "Nenhuma IA desta organização sabe responder isso ainda. A pergunta foi para Lacunas." com link para `/gaps` (AC 14)
+**C16** - `kind=noMatch` mostra "Nenhuma IA desta organização sabe responder isso ainda. A pergunta foi para Lacunas." com link para `/gaps` (AC 14) ✓
 Proof: `npm --prefix src/web run test -- -t "chat no match points to gaps"`
 
-**C17** - Uma resposta com `found=false` mostra "Não encontrado nos documentos - registrado em Lacunas"; com `found=true`, não mostra (AC 15)
+**C17** - Uma resposta com `found=false` mostra "Não encontrado nos documentos - registrado em Lacunas"; com `found=true`, não mostra (AC 15) ✓
 Proof: `npm --prefix src/web run test -- -t "not found answer is flagged"`
 
-**C18** - Enquanto o Jev responde, a thread mostra "Jev está escolhendo…" e o botão "Enviar" fica desabilitado; com IA fixada, mostra "Tech Team está respondendo…" (AC 16)
+**C18** - Enquanto o Jev responde, a thread mostra "Jev está escolhendo…" e o botão "Enviar" fica desabilitado; com IA fixada, mostra "Tech Team está respondendo…" (AC 16) ✓
 Proof: `npm --prefix src/web run test -- -t "chat shows who is working while pending"`
 
-**C19** - Um `502` mostra o `title` na thread (`role=alert`) e o campo "Mensagem" volta a ter o texto enviado (AC 17)
+**C19** - Um `502` mostra o `title` na thread (`role=alert`) e o campo "Mensagem" volta a ter o texto enviado (AC 17) ✓
 Proof: `npm --prefix src/web run test -- -t "chat error shows title and restores the message"`
 
-**C20** - Um `422` do Jev da organização mostra "Nenhuma IA desta organização tem 'Quando usar' preenchido" com link para `/organizations/o1/knowledge` (AC 18)
+**C20** - Um `422` do Jev da organização mostra "Nenhuma IA desta organização tem 'Quando usar' preenchido" com link para `/organizations/o1/knowledge` (AC 18) ✓
 Proof: `npm --prefix src/web run test -- -t "chat without eligible assistants links to base"`
 
-**C21** - Organização sem IAs: a aba Conversa mostra "Esta organização ainda não tem IAs" com link para a aba Base e não mostra o campo "Mensagem" (AC 19)
+**C21** - Organização sem IAs: a aba Conversa mostra "Esta organização ainda não tem IAs" com link para a aba Base e não mostra o campo "Mensagem" (AC 19) ✓
 Proof: `npm --prefix src/web run test -- -t "organization without assistants points to base"`
 
-**C22** - Thread vazia com IAs: mostra o nome e a `routingDescription` de cada IA (AC 20)
+**C22** - Thread vazia com IAs: mostra o nome e a `routingDescription` de cada IA (AC 20) ✓
 Proof: `npm --prefix src/web run test -- -t "empty thread shows what each assistant answers"`
 
-**C23** - `/assistants/a2` leva para `/organizations/o1` com "Culture" marcado no seletor "Para" (AC 21)
+**C23** - `/assistants/a2` leva para `/organizations/o1` com "Culture" marcado no seletor "Para" (AC 21) ✓
 Proof: `npm --prefix src/web run test -- -t "assistant link opens the organization chat pinned"`
 
-**C24** - Depois de uma resposta na thread de o1, clicar na organização o2 na barra lateral mostra a thread de o2 sem aquela resposta (AC 22)
+**C24** - Depois de uma resposta na thread de o1, clicar na organização o2 na barra lateral mostra a thread de o2 sem aquela resposta (AC 22) ✓
 Proof: `npm --prefix src/web run test -- -t "switching organization starts an empty thread"`
 
 ### S3 - Base e telas existentes · ~8 files · ~40 KB · ~10k
 
-**C25** - Aba Base: os testes de `organizations.test.tsx` (documentos, upload, IAs, "Quando usar esta IA", vazio/carregando/404, confirmações de apagar documento e IA, erro de upload) passam em `/organizations/{id}/knowledge` sem enfraquecer asserções (AC 23)
+**C25** - Aba Base: os testes de `organizations.test.tsx` (documentos, upload, IAs, "Quando usar esta IA", vazio/carregando/404, confirmações de apagar documento e IA, erro de upload) passam em `/organizations/{id}/knowledge` sem enfraquecer asserções (AC 23) ✓
 Proof: `npm --prefix src/web run test -- -t "organization page lists documents and assistants|organization page empty, loading and not found|delete asks for confirmation|disables button while processing \(upload\)|empty document list shows only upload|upload error shows problem title"`
 
-**C26** - Apagar a organização na aba Base pede confirmação citando "IAs, os documentos e as lacunas"; cancelar não chama `DELETE`; confirmar chama `DELETE /api/organizations/o1` e leva para `/organizations` (AC 24)
+**C26** - Apagar a organização na aba Base pede confirmação citando "IAs, os documentos e as lacunas"; cancelar não chama `DELETE`; confirmar chama `DELETE /api/organizations/o1` e leva para `/organizations` (AC 24) ✓
 Proof: `npm --prefix src/web run test -- -t "organization delete confirms"`
 
-**C27** - Os testes do Jev global (`jev.test.tsx`, C30-C34 do jev-gaps) passam com a thread compartilhada (AC 25)
+**C27** - Os testes do Jev global (`jev.test.tsx`, C30-C34 do jev-gaps) passam com a thread compartilhada (AC 25) ✓
 Proof: `npm --prefix src/web run test -- -t "jev answered shows who answered and switches|jev clarify lets the user pick|jev no match points to gaps|jev without eligible assistants explains how to enable|jev loading and error states"`
 
-**C28** - Os testes de Lacunas (`gaps.test.tsx`, C51-C55 do jev-gaps) passam no layout novo (AC 26)
+**C28** - Os testes de Lacunas (`gaps.test.tsx`, C51-C55 do jev-gaps) passam no layout novo (AC 26) ✓
 Proof: `npm --prefix src/web run test -- -t "nav shows open gap count|gaps empty state|gaps answer requires organization when missing|gaps dismiss confirms|gaps loading and error states|gaps list error shows problem title"`
 
-**C29** - A folha de estilo global define `:focus-visible` com contorno visível para controles interativos e um bloco `@media (prefers-reduced-motion: reduce)` que zera `animation` e `transition` (AC 27)
+**C29** - A folha de estilo global define `:focus-visible` com contorno visível para controles interativos e um bloco `@media (prefers-reduced-motion: reduce)` que zera `animation` e `transition` (AC 27) ✓
 Proof: `npm --prefix src/web run test -- -t "styles keep focus visible and respect reduced motion"`
 
 ### S4 - Página inicial pública · ~3 files · ~20 KB · ~5k
 
-**C30** - `/` sem sessão mostra o título da página inicial, os 3 passos em ordem ("Monte a organização", "Crie as IAs", "Pergunte ao Jev") e não redireciona para `/login` (AC 28, AC 29)
+**C30** - `/` sem sessão mostra o título da página inicial, os 3 passos em ordem ("Monte a organização", "Crie as IAs", "Pergunte ao Jev") e não redireciona para `/login` (AC 28, AC 29) ✓
 Proof: `npm --prefix src/web run test -- -t "home explains how it works in three steps"`
 
-**C31** - A página inicial mostra pelo menos 3 exemplos do que montar, cada um com nome e as IAs dele, e um trecho que cita "Lacunas" (AC 30)
+**C31** - A página inicial mostra pelo menos 3 exemplos do que montar, cada um com nome e as IAs dele, e um trecho que cita "Lacunas" (AC 30) ✓
 Proof: `npm --prefix src/web run test -- -t "home shows what you can build"`
 
-**C32** - Sem sessão, a página inicial tem os links "Criar conta" -> `/register` e "Entrar" -> `/login`, e não tem "Abrir o chat" (AC 31)
+**C32** - Sem sessão, a página inicial tem os links "Criar conta" -> `/register` e "Entrar" -> `/login`, e não tem "Abrir o chat" (AC 31) ✓
 Proof: `npm --prefix src/web run test -- -t "home without session offers sign up and sign in"`
 
-**C33** - Com sessão, a página inicial tem o link "Abrir o chat" -> `/organizations` e não tem "Criar conta" (AC 32)
+**C33** - Com sessão, a página inicial tem o link "Abrir o chat" -> `/organizations` e não tem "Criar conta" (AC 32) ✓
 Proof: `npm --prefix src/web run test -- -t "home with session opens the chat"`
 
 ## Coverage
@@ -166,3 +167,6 @@ O rag-mvp e o jev-gaps já respondem às duas perguntas (`.specs/features/rag-mv
 
 - Leitura: web atual ≈ 45 KB + `JevAsk` e testes ≈ 30 KB ≈ 19k. Escrita: S1 ≈ 6k, S2 ≈ 15k, S3 ≈ 10k. Saída de testes ≈ 10k. S4 ≈ 5k. Total ≈ 65k, abaixo do budget de 150k - um builder
 - Mechanism: one builder (dentro do budget, sem pergunta)
+- **Boundary:** C1-C8 fechados em `59c7b7d` (Api); C9-C33 fechados no commit do web (este)
+- **Settled mid-build:** o usuário pediu a página inicial pública (S4, AC 28-32, C30-C33 adicionados ao plano e aos checks antes do código) e a atualização da documentação (README, PRD, AGENTS)
+- **Abandoned:** `import css from './index.css?raw'` no teste de estilo - o Vitest devolve CSS vazio; o teste lê o arquivo do disco. `Omit<Entry, 'key'>` sobre a união colapsava os campos; virou `WithoutKey<T>` distributivo

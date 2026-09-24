@@ -8,8 +8,8 @@ const direct = { id: 'a1', name: 'Direto', organizationName: 'ACME' }
 const teacher = { id: 'a2', name: 'Professor', organizationName: 'ACME' }
 
 async function askJev(user: ReturnType<typeof renderApp>['user'], question = 'O que é fotossíntese?') {
-  await user.type(await screen.findByLabelText('Pergunta'), question)
-  await user.click(screen.getByRole('button', { name: 'Perguntar ao Jev' }))
+  await user.type(await screen.findByLabelText('Mensagem'), question)
+  await user.click(screen.getByRole('button', { name: 'Enviar' }))
 }
 
 describe('jev', () => {
@@ -34,12 +34,12 @@ describe('jev', () => {
     expect(await screen.findByText('Respondido por Direto · ACME')).toBeInTheDocument()
     expect(screen.getByText('Resposta curta.')).toBeInTheDocument()
     expect(screen.getByText('manual.txt')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Professor' }))
+    await user.click(screen.getByRole('button', { name: 'Perguntar a Professor' }))
 
     expect(await screen.findByText('Respondido por Professor · ACME')).toBeInTheDocument()
     expect(screen.getByText('Explicação longa.')).toBeInTheDocument()
     expect(asked).toEqual([{ question: 'O que é fotossíntese?' }])
-    expect(screen.getByRole('button', { name: 'Direto' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Perguntar a Direto' })).toBeInTheDocument()
   })
 
   // C31
@@ -98,10 +98,11 @@ describe('jev', () => {
 
     await askJev(user, 'Qual o horário?')
 
-    expect(await screen.findByRole('button', { name: 'Jev está escolhendo…' })).toBeDisabled()
+    expect(await screen.findByText('Jev está escolhendo…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled()
     release()
     expect(await screen.findByRole('alert')).toHaveTextContent(title)
-    expect(screen.getByLabelText('Pergunta')).toHaveValue('Qual o horário?')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Perguntar ao Jev' })).toBeEnabled())
+    expect(screen.getByLabelText('Mensagem')).toHaveValue('Qual o horário?')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar' })).toBeEnabled())
   })
 })

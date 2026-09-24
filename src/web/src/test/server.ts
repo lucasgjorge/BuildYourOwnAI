@@ -1,8 +1,11 @@
 import { http, HttpResponse, type HttpHandler } from 'msw'
 import { setupServer } from 'msw/node'
 
-// Every authenticated page shows the open gap count in the nav; tests override this when gaps matter.
-export const server = setupServer(http.get('*/api/gaps', () => HttpResponse.json([])))
+// Every authenticated page shows the sidebar (organizations) and the open gap count; tests override these when they matter.
+export const server = setupServer(
+  http.get('*/api/gaps', () => HttpResponse.json([])),
+  http.get('*/api/organizations', () => HttpResponse.json([])),
+)
 
 export const problem = (status: number, title: string) =>
   HttpResponse.json({ status, title }, { status, headers: { 'Content-Type': 'application/problem+json' } })

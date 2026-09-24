@@ -3,7 +3,6 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { renderApp } from '../../test/render'
 import {
-  assistantPageHandlers,
   deferred,
   loggedIn,
   organization,
@@ -13,107 +12,62 @@ import {
   server,
 } from '../../test/server'
 
-describe('organizations list', () => {
-  // C56 (rag-mvp C30)
-  it('organizations empty state and create', async () => {
-    server.use(
-      loggedIn(),
-      http.get('*/api/organizations', () => HttpResponse.json([])),
-      http.post('*/api/organizations', () =>
-        HttpResponse.json({ id: 'o1', name: 'ACME', createdAt: '2026-09-23T10:00:00Z' }, { status: 201 })),
-      ...organizationPageHandlers().slice(1),
-    )
-    const { user } = renderApp('/organizations')
+const BASE = '/organizations/o1/knowledge'
 
-    expect(await screen.findByText('Crie sua primeira organização')).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Nome da organização'), 'ACME')
-    await user.click(screen.getByRole('button', { name: 'Criar organização' }))
-
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/organizations/o1'))
-  })
-
-  // rag-mvp C33 (create)
+describe('organizations entry', () => {
+  // rag-mvp C33 (create) - now on the empty /organizations page
   it('shows problem title and keeps input (create organization)', async () => {
-    server.use(
-      loggedIn(),
-      http.get('*/api/organizations', () => HttpResponse.json([])),
-      http.post('*/api/organizations', () => problem(400, 'Nome inválido')),
-    )
+    server.use(loggedIn(), http.post('*/api/organizations', () => problem(400, 'Nome inválido')))
     const { user } = renderApp('/organizations')
 
-    await user.type(await screen.findByLabelText('Nome da organização'), 'ACME')
-    await user.click(screen.getByRole('button', { name: 'Criar organização' }))
+    const main = await screen.findByRole('main')
+    await user.type(within(main).getByLabelText('Nome da organização'), 'ACME')
+    await user.click(within(main).getByRole('button', { name: 'Criar organização' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nome inválido')
-    expect(screen.getByLabelText('Nome da organização')).toHaveValue('ACME')
-  })
-
-  // C58 (rag-mvp C34)
-  it('organization delete confirms', async () => {
-    const deletes: string[] = []
-    server.use(
-      loggedIn(),
-      http.get('*/api/organizations', () => HttpResponse.json([organizationSummary])),
-      http.delete('*/api/organizations/:id', ({ params }) => {
-        deletes.push(String(params.id))
-        return new HttpResponse(null, { status: 204 })
-      }),
-    )
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    window.confirm = confirm
-    const { user } = renderApp('/organizations')
-    const button = await screen.findByRole('button', { name: 'Apagar organização ACME' })
-
-    await user.click(button)
-    expect(confirm).toHaveBeenCalledTimes(1)
-    expect(confirm.mock.calls[0][0]).toMatch(/IAs, os documentos e as lacunas/)
-    expect(deletes).toEqual([])
-
-    await user.click(button)
-    await waitFor(() => expect(deletes).toEqual(['o1']))
-  })
-
-  // rag-mvp C47
-  it('organizations list shows loading', async () => {
-    const { gate, release } = deferred()
-    server.use(loggedIn(), http.get('*/api/organizations', async () => {
-      await gate
-      return HttpResponse.json([organizationSummary])
-    }))
-
-    renderApp('/organizations')
-
-    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
-    expect(screen.getByText('Carregando...')).toBeInTheDocument()
-    release()
-    expect(await screen.findByRole('link', { name: 'ACME' })).toBeInTheDocument()
-    expect(screen.queryByText('Carregando...')).not.toBeInTheDocument()
+    expect(await within(main).findByRole('alert')).toHaveTextContent('Nome inválido')
+    expect(within(main).getByLabelText('Nome da organização')).toHaveValue('ACME')
   })
 
   // rag-mvp C51
   it('create button shows processing', async () => {
     const { gate, release } = deferred()
-    server.use(
-      loggedIn(),
-      http.get('*/api/organizations', () => HttpResponse.json([])),
-      http.post('*/api/organizations', async () => {
-        await gate
-        return problem(400, 'Nome inválido')
-      }),
-    )
+    server.use(loggedIn(), http.post('*/api/organizations', async () => {
+      await gate
+      return problem(400, 'Nome inválido')
+    }))
     const { user } = renderApp('/organizations')
 
-    await user.type(await screen.findByLabelText('Nome da organização'), 'ACME')
-    await user.click(screen.getByRole('button', { name: 'Criar organização' }))
+    const main = await screen.findByRole('main')
+    await user.type(within(main).getByLabelText('Nome da organização'), 'ACME')
+    await user.click(within(main).getByRole('button', { name: 'Criar organização' }))
 
-    expect(await screen.findByRole('button', { name: 'Processando...' })).toBeDisabled()
+    expect(await within(main).findByRole('button', { name: 'Processando...' })).toBeDisabled()
     release()
-    expect(await screen.findByRole('button', { name: 'Criar organização' })).toBeEnabled()
+    expect(await within(main).findByRole('button', { name: 'Criar organização' })).toBeEnabled()
+  })
+
+  // rag-mvp C47 - the list is loading, then the first organization opens
+  it('organizations list shows loading', async () => {
+    const { gate, release } = deferred()
+    server.use(
+      ...organizationPageHandlers(),
+      http.get('*/api/organizations', async () => {
+        await gate
+        return HttpResponse.json([organizationSummary])
+      }),
+    )
+
+    renderApp('/organizations')
+
+    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
+    expect(screen.getAllByText('Carregando...').length).toBeGreaterThan(0)
+    release()
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/organizations/o1'))
   })
 })
 
-describe('organization page', () => {
-  // C57 (rag-mvp C31)
+describe('organization base tab', () => {
+  // C57 (rag-mvp C31) -> org-chat C25
   it('organization page lists documents and assistants', async () => {
     const created: unknown[] = []
     server.use(
@@ -123,7 +77,7 @@ describe('organization page', () => {
         return HttpResponse.json({ id: 'a3' }, { status: 201 })
       }),
     )
-    const { user } = renderApp('/organizations/o1')
+    const { user } = renderApp(BASE)
 
     expect(await screen.findByText('politicas.pdf')).toBeInTheDocument()
     expect(screen.getByText('manual.txt')).toBeInTheDocument()
@@ -141,7 +95,7 @@ describe('organization page', () => {
     ]))
   })
 
-  // C59
+  // C59 -> org-chat C25
   it('organization page empty, loading and not found', async () => {
     const { gate, release } = deferred()
     server.use(
@@ -154,19 +108,19 @@ describe('organization page', () => {
       http.get('*/api/organizations/o9', () => problem(404, 'Organização não encontrada.')),
     )
 
-    const first = renderApp('/organizations/o1')
-    // The nav only renders after the session guard resolved, so the loader seen now is the page's own.
-    expect(await screen.findByRole('link', { name: 'Organizações' })).toBeInTheDocument()
-    expect(screen.getByText('Carregando...')).toBeInTheDocument()
+    const first = renderApp(BASE)
+    // Once the sidebar settled, the only loader left is the organization's own.
+    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByText('Carregando...')).toHaveLength(1))
     release()
     expect(await screen.findByText('Nenhuma IA nesta organização')).toBeInTheDocument()
     first.unmount()
 
-    renderApp('/organizations/o9')
+    renderApp('/organizations/o9/knowledge')
     expect(await screen.findByRole('alert')).toHaveTextContent('Organização não encontrada.')
   })
 
-  // rag-mvp C34 (document)
+  // rag-mvp C34 (document) -> org-chat C25
   it('delete asks for confirmation (document)', async () => {
     const deletes: string[] = []
     server.use(
@@ -178,7 +132,7 @@ describe('organization page', () => {
     )
     const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
     window.confirm = confirm
-    const { user } = renderApp('/organizations/o1')
+    const { user } = renderApp(BASE)
     const button = await screen.findByRole('button', { name: 'Apagar documento manual.txt' })
 
     await user.click(button)
@@ -187,7 +141,7 @@ describe('organization page', () => {
     await waitFor(() => expect(deletes).toEqual(['d1']))
   })
 
-  // rag-mvp C34 (assistant)
+  // rag-mvp C34 (assistant) -> org-chat C25
   it('delete asks for confirmation (assistant)', async () => {
     const deletes: string[] = []
     server.use(
@@ -199,7 +153,7 @@ describe('organization page', () => {
     )
     const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
     window.confirm = confirm
-    const { user } = renderApp('/organizations/o1')
+    const { user } = renderApp(BASE)
     const button = await screen.findByRole('button', { name: 'Apagar IA Direto' })
 
     await user.click(button)
@@ -208,7 +162,32 @@ describe('organization page', () => {
     await waitFor(() => expect(deletes).toEqual(['a1']))
   })
 
-  // rag-mvp C35 (upload)
+  // C58 -> org-chat C26
+  it('organization delete confirms', async () => {
+    const deletes: string[] = []
+    server.use(
+      ...organizationPageHandlers(),
+      http.delete('*/api/organizations/:id', ({ params }) => {
+        deletes.push(String(params.id))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    window.confirm = confirm
+    const { user } = renderApp(BASE)
+    const button = await screen.findByRole('button', { name: 'Apagar organização ACME' })
+
+    await user.click(button)
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(confirm.mock.calls[0][0]).toMatch(/IAs, os documentos e as lacunas/)
+    expect(deletes).toEqual([])
+
+    await user.click(button)
+    await waitFor(() => expect(deletes).toEqual(['o1']))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/organizations$/))
+  })
+
+  // rag-mvp C35 (upload) -> org-chat C25
   it('disables button while processing (upload)', async () => {
     const { gate, release } = deferred()
     server.use(
@@ -218,7 +197,7 @@ describe('organization page', () => {
         return HttpResponse.json({ id: 'd3', fileName: 'novo.txt', sizeBytes: 5, chunkCount: 1, uploadedAt: '2026-09-23T11:00:00Z' }, { status: 201 })
       }),
     )
-    const { user } = renderApp('/organizations/o1')
+    const { user } = renderApp(BASE)
 
     await user.upload(await screen.findByLabelText(/Arquivo/), new File(['texto'], 'novo.txt', { type: 'text/plain' }))
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
@@ -228,7 +207,7 @@ describe('organization page', () => {
     expect(await screen.findByRole('button', { name: 'Enviar' })).toBeEnabled()
   })
 
-  // rag-mvp C48
+  // rag-mvp C48 -> org-chat C25
   it('empty document list shows only upload', async () => {
     server.use(
       loggedIn(),
@@ -236,7 +215,7 @@ describe('organization page', () => {
       http.get('*/api/organizations/o1/documents', () => HttpResponse.json([])),
     )
 
-    renderApp('/organizations/o1')
+    renderApp(BASE)
 
     const upload = await screen.findByLabelText(/Arquivo/)
     const section = upload.closest('section')!
@@ -245,13 +224,13 @@ describe('organization page', () => {
     expect(within(section).getByRole('button', { name: 'Enviar' })).toBeInTheDocument()
   })
 
-  // rag-mvp C49
+  // rag-mvp C49 -> org-chat C25
   it('upload error shows problem title', async () => {
     server.use(
       ...organizationPageHandlers(),
       http.post('*/api/organizations/o1/documents', () => problem(415, 'Formato não suportado. Use .pdf, .txt, .md.')),
     )
-    const { user } = renderApp('/organizations/o1')
+    const { user } = renderApp(BASE)
 
     await user.upload(await screen.findByLabelText(/Arquivo/), new File(['x'], 'nota.txt', { type: 'text/plain' }))
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
@@ -260,78 +239,13 @@ describe('organization page', () => {
   })
 })
 
-describe('assistant page', () => {
-  // C60 (rag-mvp C32)
-  it('assistant page asks and links to organization', async () => {
-    server.use(
-      ...assistantPageHandlers(),
-      http.post('*/api/assistants/a1/ask', () => HttpResponse.json({
-        answer: 'O prazo é de 30 dias.',
-        found: true,
-        sources: [
-          { documentId: 'd2', fileName: 'politicas.pdf', chunkIndex: 0, excerpt: 'prazo de 30 dias' },
-          { documentId: 'd9', fileName: 'contrato.md', chunkIndex: 3, excerpt: 'trinta dias' },
-        ],
-      })),
-    )
-    const { user } = renderApp('/assistants/a1')
-
-    expect(await screen.findByRole('link', { name: '← ACME' })).toHaveAttribute('href', '/organizations/o1')
-    expect(screen.queryByLabelText(/Arquivo/)).not.toBeInTheDocument()
-    await user.type(screen.getByLabelText('Pergunta'), 'Qual o prazo?')
-    await user.click(screen.getByRole('button', { name: 'Perguntar' }))
-
-    const answer = (await screen.findByText('O prazo é de 30 dias.')).closest('article')!
-    expect(within(answer).getByText('politicas.pdf')).toBeInTheDocument()
-    expect(within(answer).getByText('contrato.md')).toBeInTheDocument()
-  })
-
-  // rag-mvp C33 (ask)
-  it('shows problem title and keeps input (ask)', async () => {
-    server.use(
-      ...assistantPageHandlers(),
-      http.post('*/api/assistants/a1/ask', () => problem(502, 'O provedor de IA falhou.')),
-    )
-    const { user } = renderApp('/assistants/a1')
-
-    await user.type(await screen.findByLabelText('Pergunta'), 'Qual o prazo?')
-    await user.click(screen.getByRole('button', { name: 'Perguntar' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('O provedor de IA falhou.')
-    expect(screen.getByLabelText('Pergunta')).toHaveValue('Qual o prazo?')
-  })
-
-  // rag-mvp C35 (ask)
-  it('disables button while processing (ask)', async () => {
-    const { gate, release } = deferred()
-    server.use(
-      ...assistantPageHandlers(),
-      http.post('*/api/assistants/a1/ask', async () => {
-        await gate
-        return HttpResponse.json({ answer: 'ok', found: true, sources: [] })
-      }),
-    )
-    const { user } = renderApp('/assistants/a1')
-
-    await user.type(await screen.findByLabelText('Pergunta'), 'Qual o prazo?')
-    await user.click(screen.getByRole('button', { name: 'Perguntar' }))
-
-    expect(await screen.findByRole('button', { name: 'Processando...' })).toBeDisabled()
-    release()
-    expect(await screen.findByRole('button', { name: 'Perguntar' })).toBeEnabled()
-  })
-})
-
 describe('session guard (rag-mvp C50)', () => {
   it('session guard states: loading while the session is unknown', async () => {
     const { gate, release } = deferred()
-    server.use(
-      http.get('*/api/auth/manage/info', async () => {
-        await gate
-        return HttpResponse.json({ email: 'ana@test.local', isEmailConfirmed: false })
-      }),
-      http.get('*/api/organizations', () => HttpResponse.json([])),
-    )
+    server.use(http.get('*/api/auth/manage/info', async () => {
+      await gate
+      return HttpResponse.json({ email: 'ana@test.local', isEmailConfirmed: false })
+    }))
 
     renderApp('/organizations')
 

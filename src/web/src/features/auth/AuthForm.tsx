@@ -1,5 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import { errorTitle } from '../../shared/api/client'
+import { Alert, Button, inputClass } from '../../shared/ui'
 import type { Credentials } from './api'
 
 type Props = {
@@ -21,23 +23,22 @@ export function AuthForm({ title, submitLabel, pending, error, onSubmit, footer 
   }
 
   return (
-    <main className="mx-auto mt-16 max-w-sm p-6">
-      <h1 className="mb-6 text-2xl font-semibold">{title}</h1>
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1">
+    <main className="mx-auto max-w-sm px-6 pt-16">
+      <Link to="/" className="font-display text-lg font-bold tracking-tight">BuildYourOwnAI</Link>
+      <h1 className="mt-10 mb-6 font-display text-3xl font-bold tracking-tight">{title}</h1>
+      <form onSubmit={submit} className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-6">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           E-mail
-          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="rounded border p-2" />
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           Senha
-          <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="rounded border p-2" />
+          <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className={inputClass} />
         </label>
-        {error != null && <p role="alert" className="text-red-700">{errorTitle(error)}</p>}
-        <button type="submit" disabled={pending} className="rounded bg-black p-2 text-white disabled:opacity-50">
-          {pending ? 'Processando...' : submitLabel}
-        </button>
+        {error != null && <Alert>{errorTitle(error)}</Alert>}
+        <Button type="submit" disabled={pending}>{pending ? 'Processando...' : submitLabel}</Button>
       </form>
-      <div className="mt-4 text-sm">{footer}</div>
+      <div className="mt-4 text-sm text-muted">{footer}</div>
     </main>
   )
 }
