@@ -80,31 +80,31 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 
 ### S3 - Aba Estudar · ~6 files · ~35 KB · ~9k
 
-**C22** - A organização mostra as abas Conversa, Estudar e Base nessa ordem; Estudar leva a `/organizations/o1/study` (AC 17)
+**C22** - A organização mostra as abas Conversa, Estudar e Base nessa ordem; Estudar leva a `/organizations/o1/study` (AC 17) ✓
 Proof: `npm --prefix src/web run test -- -t "organization has conversa, estudar and base tabs"`
 
-**C23** - A aba Estudar lista os documentos com caixas marcadas, "10" escolhido entre 5, 10 e 20, e o botão "Começar"; desmarcar um documento e escolher 5 envia `documentIds` só com os marcados e `questionCount = 5` (AC 18)
+**C23** - A aba Estudar lista os documentos com caixas marcadas, "10" escolhido entre 5, 10 e 20, e o botão "Começar"; desmarcar um documento e escolher 5 envia `documentIds` só com os marcados e `questionCount = 5` (AC 18) ✓
 Proof: `npm --prefix src/web run test -- -t "study setup sends chosen documents and count"`
 
-**C24** - Organização sem documentos mostra "Suba documentos na Base para estudar" com link para a Base e sem "Começar" (AC 19)
+**C24** - Organização sem documentos mostra "Suba documentos na Base para estudar" com link para a Base e sem "Começar" (AC 19) ✓
 Proof: `npm --prefix src/web run test -- -t "study without documents points to base"`
 
-**C25** - Enquanto a criação não responde, mostra "Gerando perguntas…" e "Começar" fica desabilitado (AC 20)
+**C25** - Enquanto a criação não responde, mostra "Gerando perguntas…" e "Começar" fica desabilitado (AC 20) ✓
 Proof: `npm --prefix src/web run test -- -t "study shows generating state"`
 
-**C26** - A sessão mostra "Pergunta 1 de 3", as 4 alternativas e "Responder" desabilitado até escolher uma (AC 21)
+**C26** - A sessão mostra "Pergunta 1 de 3", as 4 alternativas e "Responder" desabilitado até escolher uma (AC 21) ✓
 Proof: `npm --prefix src/web run test -- -t "study shows one question at a time"`
 
-**C27** - Resposta certa: a alternativa escolhida fica com `data-state="correct"`, aparece "Certo!" e a explicação, a prévia não abre sozinha, e "Ver no documento" abre a prévia do trecho de origem (AC 22)
+**C27** - Resposta certa: a alternativa escolhida fica com `data-state="correct"`, aparece "Certo!" e a explicação, a prévia não abre sozinha, e "Ver no documento" abre a prévia do trecho de origem (AC 22) ✓
 Proof: `npm --prefix src/web run test -- -t "right answer shows certo and optional preview"`
 
-**C28** - Resposta errada: a escolhida fica `data-state="wrong"`, a certa `data-state="correct"`, aparece "A resposta certa é: <texto>" e a explicação, e a prévia "Prévia do trecho" abre sozinha com o trecho de origem (`chunks/{chunkIndex}` do documento da fonte) (AC 23)
+**C28** - Resposta errada: a escolhida fica `data-state="wrong"`, a certa `data-state="correct"`, aparece "A resposta certa é: <texto>" e a explicação, e a prévia "Prévia do trecho" abre sozinha com o trecho de origem (`chunks/{chunkIndex}` do documento da fonte) (AC 23) ✓
 Proof: `npm --prefix src/web run test -- -t "wrong answer shows the right one with the preview"`
 
-**C29** - "Próxima pergunta" fecha a prévia e mostra "Pergunta 2 de 3"; depois da última, mostra "Você acertou 1 de 3" e "Estudar de novo" volta à escolha de documentos (AC 24, AC 25)
+**C29** - "Próxima pergunta" fecha a prévia e mostra "Pergunta 2 de 3"; depois da última, mostra "Você acertou 1 de 3" e "Estudar de novo" volta à escolha de documentos (AC 24, AC 25) ✓
 Proof: `npm --prefix src/web run test -- -t "study moves through questions to the result"`
 
-**C30** - Um `502` na criação mostra o `title` e mantém os documentos e a quantidade escolhidos; um `409` na resposta mostra o `title` (AC 26)
+**C30** - Um `502` na criação mostra o `title` e mantém os documentos e a quantidade escolhidos; um `409` na resposta mostra o `title` (AC 26) ✓
 Proof: `npm --prefix src/web run test -- -t "study errors show title and keep choices"`
 
 ## Coverage
@@ -146,3 +146,6 @@ Os specs anteriores já respondem. Sem linhas novas.
 
 - Leitura ≈ 40 KB (entidades, DbContext, rotas, fakes, Thread/SourcePreview) ≈ 10k. Escrita: S1 ≈ 11k, S2 ≈ 4k, S3 ≈ 9k. Testes ≈ 10k. Total ≈ 44k, abaixo do budget de 150k - um builder
 - Mechanism: one builder (dentro do budget, sem pergunta). Build num worktree separado (`../BuildYourOwnAI-study`, branch `study-mode`) porque o Verifier da feature anterior está lendo a árvore principal
+- **Boundary:** C1-C21 fechados em `fba249a` (Api); C22-C30 fechados em `83844bd` (web)
+- **Settled mid-build:** o build foi pausado para planejar o admin-usage (pedido do usuário) e retomado. Na última pergunta o botão é "Ver resultado" (as outras mostram "Próxima pergunta"), para o usuário ver a correção da última antes do resultado
+- **Abandoned:** cores de acerto via `--color-lane-6`: as variáveis de lane ficam fora do `@theme` (source-preview), então `border-lane-6` não gera CSS; entraram os tokens `--color-success`/`--color-success-soft` no tema. O gerador de palavras dos testes cortava 9 caracteres de uma palavra de 8
