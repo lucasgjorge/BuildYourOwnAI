@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 5,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::give every screen state listed in the plan s observable table its own check member not only the ones the criterion text names",
+      "text": "Give every screen state listed in the plan's Observable table its own check member, not only the ones the criterion text names",
+      "signal": "ac_gap",
+      "scope": "web-ui",
+      "status": "candidate",
+      "features": [
+        "rag-mvp"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/rag-mvp/verification.md round 1 Coverage - Observable screen states (web-ui)"
+      ],
+      "created": "2026-09-24T02:04:44Z",
+      "last_seen": "2026-09-24T02:04:44Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::assert every field a surface route declares in its out column not only the fields the claim mentions",
+      "text": "Assert every field a Surface route declares in its Out column, not only the fields the claim mentions",
+      "signal": "ac_gap",
+      "scope": "api-contract",
+      "status": "candidate",
+      "features": [
+        "rag-mvp"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "round 1 C9/C43 response fields (api-contract)"
+      ],
+      "created": "2026-09-24T02:04:45Z",
+      "last_seen": "2026-09-24T02:04:45Z"
+    },
+    {
+      "id": "L-003",
+      "key": "surviving_mutant::wait for the page s own landmark before asserting a loading text that a parent guard also renders",
+      "text": "Wait for the page's own landmark before asserting a loading text that a parent guard also renders",
+      "signal": "surviving_mutant",
+      "scope": "web-ui",
+      "status": "candidate",
+      "features": [
+        "rag-mvp"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "round 2 W2 - C47 matched RequireAuth loader (web-ui)"
+      ],
+      "created": "2026-09-24T02:04:45Z",
+      "last_seen": "2026-09-24T02:04:45Z"
+    },
+    {
+      "id": "L-004",
+      "key": "surviving_mutant::assert timestamp values against the value returned at creation not only their relative order",
+      "text": "Assert timestamp values against the value returned at creation, not only their relative order",
+      "signal": "surviving_mutant",
+      "scope": "api-contract",
+      "status": "candidate",
+      "features": [
+        "rag-mvp"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "round 2 B1 - ListAssistants createdAt constant (api-contract)"
+      ],
+      "created": "2026-09-24T02:04:45Z",
+      "last_seen": "2026-09-24T02:04:45Z"
+    }
+  ]
+}

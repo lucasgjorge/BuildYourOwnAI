@@ -17,9 +17,9 @@
 ## Handoff
 
 **Feature**: rag-mvp
-**Where**: plan.md escrito, aguardando revisão humana; checks.md ainda não existe
+**Where**: C1-C51 fechados; Verifier rodada 3 = PASS em `875d5c6`; `validate_verification.py` exit 0
 **In progress**: nada
-**Next step**: revisar `.specs/features/rag-mvp/plan.md`; após aprovação, escrever `checks.md`
-**Blockers**: nenhum para o plano; chave da OpenAI é `blocks go-live`
-**Uncommitted**: tudo (repositório ainda não é git)
-**Branch**: n/a
+**Next step**: configurar `AI:OpenAI:ApiKey` e testar o fluxo real no navegador; depois planejar a etapa 2 (conversa)
+**Blockers**: chave da OpenAI (blocks go-live)
+**Uncommitted**: nada
+**Branch**: main (sem remoto)
