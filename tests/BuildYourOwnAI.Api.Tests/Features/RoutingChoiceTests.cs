@@ -117,7 +117,7 @@ public sealed class RoutingChoiceTests(ApiFactory factory) : ApiTestBase(factory
         if (app is not null)
         {
             var email = NewEmail();
-            (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
             (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
         }
         var organization = await CreateOrganizationAsync(client);

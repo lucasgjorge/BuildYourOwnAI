@@ -3,7 +3,13 @@ using Pgvector;
 
 namespace BuildYourOwnAI.Api.Infrastructure.Data;
 
-public sealed class AppUser : IdentityUser;
+public sealed class AppUser : IdentityUser
+{
+    public const int FullNameMaxLength = 100;
+
+    /// <summary>Asked at registration; null for accounts created before it was.</summary>
+    public string? FullName { get; set; }
+}
 
 /// <summary>The user's container: the documents its assistants share, and the assistants themselves.</summary>
 public sealed class Organization

@@ -9,7 +9,11 @@ public static class AuthEndpoints
     {
         var auth = app.MapGroup("/api/auth").WithTags("Auth");
 
-        // Door 4: register, login (?useCookies=true), manage/info, ... come from Identity.
+        // user-name door 2: our /register (with fullName) shadows Identity's on the same route.
+        Register.Map(auth);
+        GetMe.Map(auth);
+
+        // Door 4: login (?useCookies=true), manage/info, ... come from Identity.
         auth.MapIdentityApi<AppUser>();
 
         // Identity does not ship a logout; signing out expires the session cookie. No session is not an error.

@@ -24,7 +24,7 @@ public sealed class UnconfiguredAiTests(ApiFactory factory) : ApiTestBase(factor
         }));
         var client = app.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
         var (org, id) = await NewAssistantAsync(client);
 
@@ -43,7 +43,7 @@ public sealed class UnconfiguredAiTests(ApiFactory factory) : ApiTestBase(factor
             services.AddAi(new ConfigurationBuilder().Build())));
         var client = app.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
         var assistant = await CreateAssistantInAsync(client, await CreateOrganizationAsync(client), "Direto", routingDescription: "respostas curtas");
 

@@ -1,6 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using BuildYourOwnAI.Api.Infrastructure.Data;
 using BuildYourOwnAI.Api.Tests.Infrastructure;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace BuildYourOwnAI.Api.Tests.Features;
 
@@ -18,7 +23,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
 
-        var register = await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password });
+        var register = await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" });
         Assert.Equal(HttpStatusCode.OK, register.StatusCode);
 
         var login = await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password });
@@ -31,9 +36,9 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
     {
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
 
-        var second = await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password });
+        var second = await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" });
 
         Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
         Assert.Equal("application/problem+json", second.Content.Headers.ContentType?.MediaType);
@@ -46,7 +51,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
     {
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
 
         var login = await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password });
 
@@ -66,7 +71,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
     {
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
 
         var body = scenario == "wrong-password"
             ? new { email, password = "Wr0ng-password!" }
@@ -113,6 +118,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
             { "POST", $"/api/assistants/{id}/ask" },
             { "POST", "/api/route/ask" },
             { "POST", $"/api/organizations/{id}/route/ask" },
+            { "GET", "/api/auth/me" },
             { "GET", "/api/gaps" },
             { "POST", $"/api/gaps/{id}/answer" },
             { "POST", $"/api/gaps/{id}/dismiss" },
@@ -142,7 +148,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
 
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
 
         var info = await client.GetAsync("/api/auth/manage/info");
@@ -151,5 +157,151 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
         var body = await JsonAsync(info);
         Assert.Equal(email, body.GetProperty("email").GetString());
         Assert.False(body.GetProperty("isEmailConfirmed").GetBoolean());
+    }
+
+    // --- user-name ---
+
+    private Task<long> UsersWithEmailAsync(string email) =>
+        ScalarAsync("select count(*) from \"AspNetUsers\" where normalized_email = upper(@e)", ("e", email));
+
+    private async Task<string?> FullNameAsync(string email)
+    {
+        await using var connection = new NpgsqlConnection(Factory.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("select full_name from \"AspNetUsers\" where normalized_email = upper(@e)", connection);
+        command.Parameters.AddWithValue("e", email);
+        var value = await command.ExecuteScalarAsync();
+        return value is DBNull ? null : (string?)value;
+    }
+
+    private static async Task AssertValidationProblemAsync(HttpResponseMessage response, string key)
+    {
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.True((await JsonAsync(response)).GetProperty("errors").TryGetProperty(key, out _), $"errors.{key} missing");
+    }
+
+    // user-name C1
+    [Fact]
+    public async Task Register_with_full_name_saves_it_and_enables_login()
+    {
+        var client = Factory.CreateHttpsClient();
+        var email = NewEmail();
+
+        var register = await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Maria da Silva" });
+
+        Assert.Equal(HttpStatusCode.OK, register.StatusCode);
+        Assert.Equal("Maria da Silva", await FullNameAsync(email));
+        var login = await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    // user-name C2
+    [Fact]
+    public async Task Register_trims_full_name()
+    {
+        var client = Factory.CreateHttpsClient();
+        var email = NewEmail();
+
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "  Maria da Silva  " })).EnsureSuccessStatusCode();
+
+        Assert.Equal("Maria da Silva", await FullNameAsync(email));
+    }
+
+    // user-name C3
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Register_without_full_name_returns_400(string? fullName)
+    {
+        var client = Factory.CreateHttpsClient();
+        var email = NewEmail();
+        object body = fullName is null ? new { email, password = Password } : new { email, password = Password, fullName };
+
+        var register = await client.PostAsJsonAsync("/api/auth/register", body);
+
+        await AssertValidationProblemAsync(register, "fullName");
+        Assert.Equal(0, await UsersWithEmailAsync(email));
+    }
+
+    // user-name C4
+    [Fact]
+    public async Task Register_full_name_length_bound()
+    {
+        var client = Factory.CreateHttpsClient();
+        var tooLong = NewEmail();
+        var longest = NewEmail();
+
+        var rejected = await client.PostAsJsonAsync("/api/auth/register", new { email = tooLong, password = Password, fullName = new string('a', 101) });
+        var accepted = await client.PostAsJsonAsync("/api/auth/register", new { email = longest, password = Password, fullName = new string('b', 100) });
+
+        await AssertValidationProblemAsync(rejected, "fullName");
+        Assert.Equal(0, await UsersWithEmailAsync(tooLong));
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        Assert.Equal(new string('b', 100), await FullNameAsync(longest));
+    }
+
+    // user-name C6
+    [Fact]
+    public async Task Register_weak_password_returns_400_with_identity_code()
+    {
+        var client = Factory.CreateHttpsClient();
+        var email = NewEmail();
+
+        var register = await client.PostAsJsonAsync("/api/auth/register", new { email, password = "abc", fullName = "Maria da Silva" });
+
+        await AssertValidationProblemAsync(register, "PasswordTooShort");
+        Assert.Equal(0, await UsersWithEmailAsync(email));
+    }
+
+    // user-name C7
+    [Fact]
+    public async Task Register_invalid_email_returns_400_InvalidEmail()
+    {
+        var client = Factory.CreateHttpsClient();
+
+        var register = await client.PostAsJsonAsync("/api/auth/register", new { email = "nao-e-email", password = Password, fullName = "Maria da Silva" });
+
+        await AssertValidationProblemAsync(register, "InvalidEmail");
+        Assert.Equal(0, await UsersWithEmailAsync("nao-e-email"));
+    }
+
+    // user-name C10
+    [Fact]
+    public async Task Me_returns_email_and_full_name()
+    {
+        var client = Factory.CreateHttpsClient();
+        var email = NewEmail();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Maria da Silva" })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
+
+        var me = await client.GetAsync("/api/auth/me");
+
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        var body = await JsonAsync(me);
+        Assert.Equal(email, body.GetProperty("email").GetString());
+        Assert.Equal("Maria da Silva", body.GetProperty("fullName").GetString());
+    }
+
+    // user-name C12
+    [Fact]
+    public async Task Me_returns_null_full_name_for_account_without_name()
+    {
+        var email = NewEmail();
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            Assert.True((await users.CreateAsync(new AppUser { UserName = email, Email = email }, Password)).Succeeded);
+        }
+        var client = Factory.CreateHttpsClient();
+        (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
+
+        var me = await client.GetAsync("/api/auth/me");
+
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        var body = await JsonAsync(me);
+        Assert.Equal(email, body.GetProperty("email").GetString());
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("fullName").ValueKind);
     }
 }

@@ -95,6 +95,17 @@ public sealed class MigrationTests(ApiFactory factory) : ApiTestBase(factory)
             """));
     }
 
+    // user-name C9
+    [Fact]
+    public async Task Schema_has_user_full_name()
+    {
+        Assert.Equal(1, await CountAsync(Factory.ConnectionString, """
+            select count(*) from information_schema.columns
+            where table_name = 'AspNetUsers' and column_name = 'full_name'
+              and is_nullable = 'YES' and data_type = 'character varying' and character_maximum_length = 100
+            """));
+    }
+
     private async Task<string> NewDatabaseAsync()
     {
         var name = "mig_" + Guid.NewGuid().ToString("N");

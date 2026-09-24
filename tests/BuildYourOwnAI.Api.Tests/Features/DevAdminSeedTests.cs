@@ -45,4 +45,16 @@ public sealed class DevAdminSeedTests(ApiFactory factory) : ApiTestBase(factory)
 
         Assert.Equal(0, await UsersWithEmailAsync(email));
     }
+
+    // user-name C13
+    [Fact]
+    public async Task Seeded_account_is_named_Administrador()
+    {
+        var email = NewEmail();
+
+        await SeedAsync(email, "Admin#2026");
+
+        Assert.Equal(1, await ScalarAsync(
+            "select count(*) from \"AspNetUsers\" where normalized_email = upper(@e) and full_name = 'Administrador'", ("e", email)));
+    }
 }

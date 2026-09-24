@@ -23,6 +23,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         base.OnModelCreating(builder);
         builder.HasPostgresExtension("vector");
 
+        builder.Entity<AppUser>(e => e.Property(u => u.FullName).HasMaxLength(AppUser.FullNameMaxLength));
+
         builder.Entity<Organization>(e =>
         {
             e.Property(o => o.Name).HasMaxLength(Organization.NameMaxLength);

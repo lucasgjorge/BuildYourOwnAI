@@ -23,7 +23,7 @@ public abstract class ApiTestBase(ApiFactory factory)
     {
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
         return client;
     }

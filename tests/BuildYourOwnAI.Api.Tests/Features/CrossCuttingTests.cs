@@ -140,6 +140,25 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
         foreach (var secret in new[] { askSecret, routedSecret, noMatchSecret, gapAnswerSecret, routingSecret, FakeAiTriggers.FoundAnswer, FakeRouterClient.OutputMarker })
             Assert.DoesNotContain(logged, text => text.Contains(secret));
     }
+
+    // user-name C8
+    [Fact]
+    public async Task Register_never_logs_full_name()
+    {
+        var client = Factory.CreateHttpsClient();
+        var email = NewEmail();
+        var fullName = "Nome " + Guid.NewGuid().ToString("N");
+        var before = Factory.Logs.Entries.Count;
+
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName })).EnsureSuccessStatusCode();
+        // A rejected second registration exercises the error path too.
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName });
+
+        var logged = Factory.Logs.Entries.Skip(before)
+            .SelectMany(e => e.Properties.Values.Select(v => v?.ToString() ?? "").Append(e.Message))
+            .ToList();
+        Assert.DoesNotContain(logged, text => text.Contains(fullName));
+    }
 }
 
 public sealed class SpaHostingTests(ApiFactory factory) : ApiTestBase(factory)

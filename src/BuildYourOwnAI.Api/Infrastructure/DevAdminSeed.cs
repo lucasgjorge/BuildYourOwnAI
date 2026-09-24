@@ -20,7 +20,7 @@ public static class DevAdminSeed
         if (await users.FindByEmailAsync(email) is not null)
             return;
 
-        var result = await users.CreateAsync(new AppUser { UserName = email, Email = email, EmailConfirmed = true }, password);
+        var result = await users.CreateAsync(new AppUser { UserName = email, Email = email, EmailConfirmed = true, FullName = "Administrador" }, password);
         if (result.Succeeded)
             logger.LogInformation("Development account {Email} created", email);
         else
