@@ -20,7 +20,7 @@ describe('global styles', () => {
   it('lane colors are declared outside the tailwind theme', () => {
     const root = css.match(/:root\s*\{([^}]*)\}/)
     expect(root).not.toBeNull()
-    for (let lane = 1; lane <= 6; lane++) expect(root![1]).toMatch(new RegExp(`--color-lane-${lane}:\s*#`))
+    for (let lane = 1; lane <= 6; lane++) expect(root![1]).toMatch(new RegExp(`--color-lane-${lane}:\\s*#`))
     const theme = css.match(/@theme\s*\{([^}]*)\}/)![1]
     expect(theme).not.toMatch(/--color-lane-/)
   })
