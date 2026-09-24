@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: byoai
+      POSTGRES_USER: byoai
+      POSTGRES_PASSWORD: byoai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U byoai -d byoai"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:

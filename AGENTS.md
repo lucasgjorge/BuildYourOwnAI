@@ -26,6 +26,8 @@ docker-compose.yml               Postgres 17 + pgvector
 docker compose up -d                                  # Postgres em localhost:5432
 dotnet build
 dotnet test                                           # precisa do Docker (Testcontainers)
+# Docker Desktop no Windows (contexto desktop-linux): no PowerShell, antes do dotnet test
+#   $env:DOCKER_HOST = "npipe://./pipe/dockerDesktopLinuxEngine"
 dotnet run --project src/BuildYourOwnAI.Api
 cd src/web && npm install && npm run dev             # Vite em localhost:5173, proxy /api -> Api
 cd src/web && npm test
