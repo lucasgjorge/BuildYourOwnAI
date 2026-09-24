@@ -18,7 +18,10 @@ const summary = (o: typeof nexora | typeof acme) => ({ id: o.id, name: o.name, c
 const ref = (id: string, name: string) => ({ id, name, organizationName: 'Nexora Tech' })
 const answered = (by: ReturnType<typeof ref>, answer: string, extra: object = {}) => ({
   kind: 'answered', assistant: by, answer, found: true,
-  sources: [{ documentId: 'd1', fileName: '01_rh.txt', chunkIndex: 0, excerpt: 'x' }],
+  sources: [
+    { documentId: 'd1', fileName: '01_rh.txt', chunkIndex: 0, excerpt: 'x' },
+    { documentId: 'd2', fileName: '02_cultura.txt', chunkIndex: 3, excerpt: 'y' },
+  ],
   alternatives: [ref('culture', 'Culture'), ref('tech', 'Tech Team')], ...extra,
 })
 
@@ -141,6 +144,7 @@ describe('organization chat', () => {
     expect(within(answer).getByText('Respondido por RH')).toBeInTheDocument()
     expect(within(answer).getByText('via Jev')).toBeInTheDocument()
     expect(within(answer).getByText('01_rh.txt')).toBeInTheDocument()
+    expect(within(answer).getByText('02_cultura.txt')).toBeInTheDocument()
     expect(within(answer).getByRole('button', { name: 'Perguntar a Culture' })).toBeInTheDocument()
   })
 
@@ -161,10 +165,15 @@ describe('organization chat', () => {
     await user.click(await screen.findByRole('button', { name: 'Perguntar a Culture' }))
 
     expect(await screen.findByText('Resposta da Culture.')).toBeInTheDocument()
-    expect(screen.getByText('Resposta do RH.')).toBeInTheDocument()
     expect(screen.getByText('Respondido por RH')).toBeInTheDocument()
     expect(screen.getByText('Respondido por Culture')).toBeInTheDocument()
     expect(asked).toEqual([{ question: 'Como peço férias?' }])
+    // Appended, in the order they happened: the question, RH's answer, then Culture's.
+    const entries = Array.from(thread().children).map(e => e.textContent ?? '')
+    expect(entries).toHaveLength(3)
+    expect(entries[0]).toContain('Como peço férias?')
+    expect(entries[1]).toContain('Resposta do RH.')
+    expect(entries[2]).toContain('Resposta da Culture.')
   })
 
   // C14

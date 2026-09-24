@@ -59,7 +59,7 @@ Proof: `npm --prefix src/web run test -- -t "sidebar lists organizations and des
 **C12** - Com alvo "Jev decide", enviar chama `POST /api/organizations/o1/jev/ask` com a pergunta; a thread mostra a pergunta, "Respondido por RH", "via Jev", o texto da resposta, o `fileName` da fonte e o botão "Perguntar a Culture" (AC 10) ✓
 Proof: `npm --prefix src/web run test -- -t "chat sends to organization jev and shows who answered"`
 
-**C13** - Clicar "Perguntar a Culture" chama `POST /api/assistants/{cultureId}/ask` com a mesma pergunta; a thread passa a ter as duas respostas, "Respondido por RH" e "Respondido por Culture" (AC 11) ✓
+**C13** - Clicar "Perguntar a Culture" chama `POST /api/assistants/{cultureId}/ask` com a mesma pergunta; a thread passa a ter, nesta ordem, a pergunta, a resposta do RH e a da Culture (AC 11; ordem da thread do Observable) ✓
 Proof: `npm --prefix src/web run test -- -t "asking an alternative appends to the thread"`
 
 **C14** - Fixar "Tech Team" no seletor "Para" e enviar chama `POST /api/assistants/{techId}/ask` (e não o Jev); a resposta mostra "Respondido por Tech Team" sem "via Jev" (AC 12) ✓
@@ -97,7 +97,7 @@ Proof: `npm --prefix src/web run test -- -t "switching organization starts an em
 
 ### S3 - Base e telas existentes · ~8 files · ~40 KB · ~10k
 
-**C25** - Aba Base: os testes de `organizations.test.tsx` (documentos, upload, IAs, "Quando usar esta IA", vazio/carregando/404, confirmações de apagar documento e IA, erro de upload) passam em `/organizations/{id}/knowledge` sem enfraquecer asserções (AC 23) ✓
+**C25** - Aba Base: os testes de `organizations.test.tsx` (documentos, upload, IAs com a `routingDescription` de cada uma ou "Fora do Jev", "Quando usar esta IA", vazio/carregando/404, confirmações de apagar documento e IA, erro de upload) passam em `/organizations/{id}/knowledge` sem enfraquecer asserções (AC 23) ✓
 Proof: `npm --prefix src/web run test -- -t "organization page lists documents and assistants|organization page empty, loading and not found|delete asks for confirmation|disables button while processing \(upload\)|empty document list shows only upload|upload error shows problem title"`
 
 **C26** - Apagar a organização na aba Base pede confirmação citando "IAs, os documentos e as lacunas"; cancelar não chama `DELETE`; confirmar chama `DELETE /api/organizations/o1` e leva para `/organizations` (AC 24) ✓
@@ -135,6 +135,7 @@ Proof: `npm --prefix src/web run test -- -t "home with session opens the chat"`
 | escopo do roteador (3) | outra organização do usuário C1 · outro usuário C1 · sem descrição C5 | - |
 | `{id}` × {outro usuário, inexistente} (2) | outro C4 · inexistente C4 | - |
 | alvo da mensagem (2) | Jev decide C12 · IA fixada C14 | - |
+| ordem da thread (1) | pergunta -> resposta -> resposta acrescentada C13 | - |
 | mensagens da thread (7) | answered C12 · alternativa acrescentada C13 · clarify C15 · noMatch C16 · found=false C17 · erro C19 · 422 C20 | - |
 | estados da aba Conversa (5) | sem IAs C21 · thread vazia C22 · carregando C18 · erro C19 · sem sessão existing (`RequireAuth`, rag-mvp C29) | - |
 | entradas no produto (4) | `/organizations` com orgs C9 · sem orgs C10 · `/assistants/{id}` C23 · troca de organização C24 | - |
@@ -170,3 +171,4 @@ O rag-mvp e o jev-gaps já respondem às duas perguntas (`.specs/features/rag-mv
 - **Boundary:** C1-C8 fechados em `59c7b7d` (Api); C9-C33 fechados no commit do web (este)
 - **Settled mid-build:** o usuário pediu a página inicial pública (S4, AC 28-32, C30-C33 adicionados ao plano e aos checks antes do código) e a atualização da documentação (README, PRD, AGENTS)
 - **Abandoned:** `import css from './index.css?raw'` no teste de estilo - o Vitest devolve CSS vazio; o teste lê o arquivo do disco. `Omit<Entry, 'key'>` sobre a união colapsava os campos; virou `WithoutKey<T>` distributivo
+- **Round 2 fix (after Verifier FAIL at `2e197a1`):** C13 passa a afirmar a ordem da thread (mutante "entrada nova no início" sobreviveu); C25 afirma a `routingDescription` / "Fora do Jev" de cada IA na Base; C12 cobre duas fontes. Fora do round 1, já no tree: `0bd08bf` (cores das IAs saíam do CSS gerado) e `4d2ffb1` (regex do teste de estilo)
