@@ -106,6 +106,8 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
             { "GET", $"/api/organizations/{id}/documents" },
             { "DELETE", $"/api/organizations/{id}/documents/{doc}" },
             { "GET", $"/api/organizations/{id}/documents/{doc}/chunks/0" },
+            { "POST", $"/api/organizations/{id}/study-sessions" },
+            { "POST", $"/api/study-sessions/{id}/questions/{doc}/answer" },
             { "POST", "/api/assistants" },
             { "GET", $"/api/assistants/{id}" },
             { "POST", $"/api/assistants/{id}/ask" },
@@ -124,7 +126,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
     {
         var client = Factory.CreateHttpsClient();
         var request = new HttpRequestMessage(new HttpMethod(method), path);
-        if (method == "POST") request.Content = JsonContent.Create(new { name = "x", question = "x", answer = "x" });
+        if (method == "POST") request.Content = JsonContent.Create(new { name = "x", question = "x", answer = "x", questionCount = 5, option = 0 });
 
         var response = await client.SendAsync(request);
 

@@ -1,4 +1,5 @@
 using BuildYourOwnAI.Api.Features.Documents;
+using BuildYourOwnAI.Api.Features.Study;
 
 namespace BuildYourOwnAI.Api.Features.Organizations;
 
@@ -17,6 +18,8 @@ public static class OrganizationsEndpoints
         ListDocuments.Map(organizations);
         DeleteDocument.Map(organizations);
         GetDocumentChunks.Map(organizations);
+
+        CreateStudySession.Map(organizations);
 
         return app;
     }

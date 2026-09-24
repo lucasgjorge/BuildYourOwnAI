@@ -93,7 +93,7 @@ public sealed partial class FakeEmbeddingGenerator : IEmbeddingGenerator<string,
     public void Dispose() { }
 }
 
-public sealed class FakeChatClient : IChatClient
+public sealed partial class FakeChatClient : IChatClient
 {
     public ConcurrentQueue<IReadOnlyList<ChatMessage>> Calls { get; } = new();
 
@@ -106,6 +106,9 @@ public sealed class FakeChatClient : IChatClient
             throw new HttpRequestException(FakeAiTriggers.ProviderSecretMessage);
 
         var text = string.Join("\n", list.Select(m => m.Text));
+        if (text.Contains(StudyPromptMarker))
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, (StudyReply ?? DefaultStudyReply)(text))));
+
         var reply = text.Contains(FakeAiTriggers.NotFound)
             ? JsonSerializer.Serialize(new { answer = FakeAiTriggers.NotFoundAnswer, found = false })
             : text.Contains(FakeAiTriggers.Found)
@@ -115,6 +118,32 @@ public sealed class FakeChatClient : IChatClient
     }
 
     public bool ReceivedCallContaining(string marker) => Calls.Any(c => c.Any(m => m.Text.Contains(marker)));
+
+    /// <summary>Text only the study-question prompt carries.</summary>
+    public const string StudyPromptMarker = "Gere perguntas de múltipla escolha";
+
+    /// <summary>When set, answers the study prompt instead of the default (reset it in a finally).</summary>
+    public Func<string, string>? StudyReply { get; set; }
+
+    /// <summary>The numbers of the chunks "[n]" in a study prompt.</summary>
+    public static List<int> StudyChunkNumbers(string prompt) =>
+        StudyChunk().Matches(prompt).Select(m => int.Parse(m.Groups[1].Value)).ToList();
+
+    /// <summary>One valid question per chunk: the right option is "certa n", first.</summary>
+    public static string DefaultStudyReply(string prompt) => JsonSerializer.Serialize(new
+    {
+        questions = StudyChunkNumbers(prompt).Select(n => new
+        {
+            chunk = n,
+            prompt = $"Pergunta sobre o trecho {n}?",
+            options = new[] { $"certa {n}", $"errada a {n}", $"errada b {n}", $"errada c {n}" },
+            correct = 0,
+            explanation = $"explicação {n}",
+        }),
+    });
+
+    [GeneratedRegex(@"^\[(\d+)\] ", RegexOptions.Multiline)]
+    private static partial Regex StudyChunk();
 
     /// <summary>All text the model received in the call whose messages contain <paramref name="marker"/>.</summary>
     public string PromptContaining(string marker) =>

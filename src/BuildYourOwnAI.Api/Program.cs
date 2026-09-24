@@ -6,6 +6,7 @@ using BuildYourOwnAI.Api.Features.Auth;
 using BuildYourOwnAI.Api.Features.Gaps;
 using BuildYourOwnAI.Api.Features.Organizations;
 using BuildYourOwnAI.Api.Features.Routing;
+using BuildYourOwnAI.Api.Features.Study;
 using BuildYourOwnAI.Api.Infrastructure;
 using BuildYourOwnAI.Api.Infrastructure.Ai;
 using BuildYourOwnAI.Api.Infrastructure.Data;
@@ -81,6 +82,7 @@ app.MapOrganizationsEndpoints();
 app.MapAssistantsEndpoints();
 app.MapRoutingEndpoints();
 app.MapGapsEndpoints();
+app.MapStudyEndpoints();
 
 // Unknown /api routes are API 404s, never the SPA page (door 9).
 app.Map("/api/{**rest}", () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Rota não encontrada."));
