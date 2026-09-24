@@ -59,7 +59,7 @@ public sealed class AssistantsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
         Assert.Equal(0, (await JsonAsync(empty)).GetArrayLength());
 
-        var a = await CreateAssistantAsync(client, "A");
+        var a = await CreateAssistantAsync(client, "A", "instrucoes de A");
         var b = await CreateAssistantAsync(client, "B");
         await UploadOkAsync(client, a, "a.txt", "conteudo do documento A");
 
@@ -70,6 +70,11 @@ public sealed class AssistantsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(a, list[1].GetProperty("id").GetGuid());
         Assert.Equal(0, list[0].GetProperty("documentCount").GetInt32());
         Assert.Equal(1, list[1].GetProperty("documentCount").GetInt32());
+        Assert.Equal("B", list[0].GetProperty("name").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, list[0].GetProperty("instructions").ValueKind);
+        Assert.Equal("A", list[1].GetProperty("name").GetString());
+        Assert.Equal("instrucoes de A", list[1].GetProperty("instructions").GetString());
+        Assert.True(list[0].GetProperty("createdAt").GetDateTimeOffset() >= list[1].GetProperty("createdAt").GetDateTimeOffset());
     }
 
     public static TheoryData<string, string, bool> IdRoutes() => new()

@@ -174,3 +174,53 @@ describe('assistant page', () => {
     expect(await screen.findByRole('button', { name: 'Perguntar' })).toBeEnabled()
   })
 })
+
+describe('screen states added in verification round 2', () => {
+  // C47
+  it('assistants list shows loading', async () => {
+    const { gate, release } = deferred()
+    server.use(loggedIn(), http.get('*/api/assistants', async () => {
+      await gate
+      return HttpResponse.json([assistant])
+    }))
+
+    renderApp('/assistants')
+
+    expect(await screen.findByText('Carregando...')).toBeInTheDocument()
+    release()
+    expect(await screen.findByRole('link', { name: 'Suporte' })).toBeInTheDocument()
+    expect(screen.queryByText('Carregando...')).not.toBeInTheDocument()
+  })
+
+  // C48
+  it('empty document list shows only upload', async () => {
+    server.use(
+      loggedIn(),
+      http.get('*/api/assistants/a1', () => HttpResponse.json({ ...assistant, documentCount: 0 })),
+      http.get('*/api/assistants/a1/documents', () => HttpResponse.json([])),
+    )
+
+    renderApp('/assistants/a1')
+
+    const upload = await screen.findByLabelText(/Arquivo/)
+    const section = upload.closest('section')!
+    await waitFor(() => expect(within(section).queryByText('Carregando...')).not.toBeInTheDocument())
+    expect(within(section).queryAllByRole('listitem')).toHaveLength(0)
+    expect(within(section).queryByRole('button', { name: /Apagar documento/ })).not.toBeInTheDocument()
+    expect(within(section).getByRole('button', { name: 'Enviar' })).toBeInTheDocument()
+  })
+
+  // C49
+  it('upload error shows problem title', async () => {
+    server.use(
+      ...assistantPageHandlers(),
+      http.post('*/api/assistants/a1/documents', () => problem(415, 'Formato não suportado. Use .pdf, .txt, .md.')),
+    )
+    const { user } = renderApp('/assistants/a1')
+
+    await user.upload(await screen.findByLabelText(/Arquivo/), new File(['x'], 'nota.txt', { type: 'text/plain' }))
+    await user.click(screen.getByRole('button', { name: 'Enviar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Formato não suportado. Use .pdf, .txt, .md.')
+  })
+})

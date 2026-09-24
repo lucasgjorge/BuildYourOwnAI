@@ -138,6 +138,8 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
         var info = await client.GetAsync("/api/auth/manage/info");
 
         Assert.Equal(HttpStatusCode.OK, info.StatusCode);
-        Assert.Equal(email, (await JsonAsync(info)).GetProperty("email").GetString());
+        var body = await JsonAsync(info);
+        Assert.Equal(email, body.GetProperty("email").GetString());
+        Assert.False(body.GetProperty("isEmailConfirmed").GetBoolean());
     }
 }

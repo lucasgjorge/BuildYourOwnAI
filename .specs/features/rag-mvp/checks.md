@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/rag-mvp/plan.md`
 
-44 checks in 6 slices · 9 one-way doors · 1 open, of which 0 block (1 blocks go-live)
+49 checks in 7 slices · 9 one-way doors · 1 open, of which 0 block (1 blocks go-live)
 
 Comandos de prova:
 
@@ -156,6 +156,23 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C44** - `GET /api/assistants/{id}` do dono responde `200` com `id`, `name`, `instructions`, `createdAt` e `documentCount` igual ao número de documentos enviados (Surface) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AssistantsTests.Get_returns_200_with_document_count"`
 
+### S7 - Estados de tela que faltavam (rodada 2 do Verifier) · 2 files · ~8 KB · ~2k
+
+**C45** - Em `/login`: enquanto o login está pendente, o botão fica desabilitado com o texto "Processando..."; um `401` mostra "E-mail ou senha inválidos." e mantém o e-mail digitado; um login `200` leva a `/assistants` (Observable `/login` error, loading) ✓
+Proof: `npm --prefix src/web run test -- -t "login form states"`
+
+**C46** - Em `/register`: enquanto pendente, o botão fica desabilitado com "Processando..."; problem details da Api mostram o `title` e mantêm o e-mail digitado; sucesso leva a `/assistants` (Observable `/register` error, loading) ✓
+Proof: `npm --prefix src/web run test -- -t "register form states"`
+
+**C47** - `/assistants` mostra "Carregando..." enquanto `GET /api/assistants` não responde, e a lista depois que responde (Observable `/assistants` loading) ✓
+Proof: `npm --prefix src/web run test -- -t "assistants list shows loading"`
+
+**C48** - `/assistants/{id}` com `GET documents` = `[]` não mostra nenhum item de documento e mostra o campo de upload (Observable `/assistants/{id}` empty state) ✓
+Proof: `npm --prefix src/web run test -- -t "empty document list shows only upload"`
+
+**C49** - Um upload respondido com problem details mostra o `title` na página de assistente (AC 33, Observable `/assistants/{id}` error) ✓
+Proof: `npm --prefix src/web run test -- -t "upload error shows problem title"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -185,10 +202,11 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 | top-K (2 casos) | mais de 5 chunks C22 · menos de 5 chunks C22 | - |
 | falhas de provedor (3) | embedding no upload C18 · embedding no ask C27 · chat no ask C27 | - |
 | rate limit (3) | 20º C28 · 21º C28 · outro usuário C28 | - |
-| telas (4) | `/login` C29 · `/register` C29 · `/assistants` C30, C34 · `/assistants/{id}` C31, C32, C33, C34, C35 | - |
+| telas (4) | `/login` C29, C45 · `/register` C29, C46 · `/assistants` C30, C34, C47 · `/assistants/{id}` C31, C32, C33, C34, C35, C48, C49 | - |
+| estados por tela do Observable (11) | `/login` erro C45 · `/login` carregando C45 · `/register` erro C46 · `/register` carregando C46 · `/assistants` vazio C30 · `/assistants` carregando C47 · `/assistants` erro C33 · `/assistants` sem sessão C29 · `/assistants/{id}` vazio C48 · `/assistants/{id}` erro C33, C49 · `/assistants/{id}` carregando C35 | - |
 | ações destrutivas na UI (2) | apagar assistente C34 · apagar documento C34 | - |
 | ações em andamento na UI (2) | upload C35 · pergunta C35 | - |
-| erro exibido na UI (2) | criar IA C33 · pergunta C33 | - |
+| erro exibido na UI (5) | criar IA C33 · pergunta C33 · upload C49 · login C45 · registro C46 | - |
 | doors (9) | 1 C12, C36 · 2 C36, C22 · 3 C11, C17, C37 · 4 C3, C5 · 5 C10, C23 · 6 C38 · 7 C39 · 8 C18 · 9 C41 | - |
 | entidades (3) | `Assistant` C7, C11 · `Document` C12, C20 · `Chunk` C12, C36 | - |
 | startup config: cookie, rate limiter, problem details, SPA (1 assembly) | `Program.cs` compartilhado com `WebApplicationFactory` C3, C28, C39, C41 | - |
@@ -235,3 +253,4 @@ Cost: 1 classe de teste de unidade (chunker); o resto já estava na fronteira. A
 - **Boundary:** C1-C28, C36-C44 fechados em `3d64515`; C29-C35 fechados no commit do web (este)
 - **Settled mid-build:** nenhum esclarecimento do usuário durante o build. Door 5b adicionada ao `Landing` antes do código (filtro de dono também em `Document`/`Chunk`)
 - **Abandoned:** ambiente jsdom nos testes do web - o `FormData` do jsdom não é aceito pelo `fetch` do Node, então o upload nunca chegava ao MSW; trocado por happy-dom. `vi.spyOn(window, 'confirm')` - happy-dom não define `confirm`; o teste atribui um `vi.fn()`
+- **Round 2 fix (after Verifier FAIL at `bef8502`):** C45-C49 adicionados para os estados de tela do `Observable` sem prova; asserções de C9 (`name`, `instructions`, `createdAt`), C43 (`isEmailConfirmed`) e C40 (propriedades estruturadas do log) reforçadas; login `401` passa a mostrar "E-mail ou senha inválidos."

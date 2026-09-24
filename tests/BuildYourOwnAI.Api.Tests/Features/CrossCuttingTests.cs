@@ -97,10 +97,13 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
         Assert.True(entry.Properties.ContainsKey("ChunkCount"));
         Assert.True(entry.Properties.ContainsKey("ElapsedMs"));
 
-        var all = Factory.Logs.Entries.ToList();
-        Assert.DoesNotContain(all, e => e.Message.Contains(documentSecret));
-        Assert.DoesNotContain(all, e => e.Message.Contains(questionSecret));
-        Assert.DoesNotContain(all, e => e.Message.Contains(answer));
+        // Both the rendered message and every structured property value are checked: a sink may store either.
+        var logged = Factory.Logs.Entries
+            .SelectMany(e => e.Properties.Values.Select(v => v?.ToString() ?? "").Append(e.Message))
+            .ToList();
+        Assert.DoesNotContain(logged, text => text.Contains(documentSecret));
+        Assert.DoesNotContain(logged, text => text.Contains(questionSecret));
+        Assert.DoesNotContain(logged, text => text.Contains(answer));
     }
 }
 

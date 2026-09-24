@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, postJson } from '../../shared/api/client'
+import { ApiError, apiFetch, postJson } from '../../shared/api/client'
 
 export type Session = { email: string; isEmailConfirmed: boolean }
 export type Credentials = { email: string; password: string }
@@ -14,10 +14,20 @@ export function useSession() {
   })
 }
 
+// Identity answers a failed login with a bare 401 titled "Unauthorized"; the user needs to know why.
+async function login(credentials: Credentials) {
+  try {
+    await postJson<void>('/api/auth/login?useCookies=true', credentials)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw new ApiError(401, 'E-mail ou senha inválidos.')
+    throw error
+  }
+}
+
 export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (credentials: Credentials) => postJson<void>('/api/auth/login?useCookies=true', credentials),
+    mutationFn: login,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionKey }),
   })
 }
@@ -27,7 +37,7 @@ export function useRegister() {
   return useMutation({
     mutationFn: async (credentials: Credentials) => {
       await postJson<void>('/api/auth/register', credentials)
-      await postJson<void>('/api/auth/login?useCookies=true', credentials)
+      await login(credentials)
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionKey }),
   })
