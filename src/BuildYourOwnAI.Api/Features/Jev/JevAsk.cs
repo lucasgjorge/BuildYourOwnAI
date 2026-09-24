@@ -38,14 +38,33 @@ public static class JevAsk
 
     public static IEndpointRouteBuilder MapJevEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/jev/ask", Handle)
+        // Global Jev: routes among all of the user's assistants.
+        app.MapPost("/api/jev/ask", (
+                Request request, AppDbContext db, ICurrentUser currentUser,
+                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat,
+                [FromKeyedServices(AiServiceCollectionExtensions.RouterKey)] IChatClient router,
+                ILoggerFactory loggerFactory, CancellationToken ct) =>
+                Handle(null, request, db, currentUser, embeddings, chat, router, loggerFactory, ct))
             .RequireAuthorization()
             .RequireRateLimiting(AskPipeline.RateLimitPolicy)
             .WithTags("Jev");
+
+        // Door 1 (org-chat): the organization's Jev routes only among that organization's assistants.
+        app.MapPost("/api/organizations/{id:guid}/jev/ask", (
+                Guid id, Request request, AppDbContext db, ICurrentUser currentUser,
+                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat,
+                [FromKeyedServices(AiServiceCollectionExtensions.RouterKey)] IChatClient router,
+                ILoggerFactory loggerFactory, CancellationToken ct) =>
+                Handle(id, request, db, currentUser, embeddings, chat, router, loggerFactory, ct))
+            .RequireAuthorization()
+            .RequireRateLimiting(AskPipeline.RateLimitPolicy)
+            .WithTags("Jev");
+
         return app;
     }
 
     private static async Task<IResult> Handle(
+        Guid? organizationId,
         Request request,
         AppDbContext db,
         ICurrentUser currentUser,
@@ -60,7 +79,11 @@ public static class JevAsk
         if (AskPipeline.InvalidQuestion(question) is { } invalid)
             return invalid;
 
+        if (organizationId is { } orgId && !await db.Organizations.AnyAsync(o => o.Id == orgId, ct))
+            return Problems.OrganizationNotFound();
+
         var eligible = await db.Assistants
+            .Where(a => organizationId == null || a.OrganizationId == organizationId)
             .Where(a => a.RoutingDescription != null && a.RoutingDescription.Trim() != "")
             .OrderBy(a => a.Name).ThenBy(a => a.Id)
             .Select(a => new Eligible(a.Id, a.OrganizationId, a.Organization.Name, a.Name, a.Instructions, a.RoutingDescription!))
@@ -68,7 +91,9 @@ public static class JevAsk
         if (eligible.Count == 0)
             return Results.Problem(
                 statusCode: StatusCodes.Status422UnprocessableEntity,
-                title: "Nenhuma IA disponível para o Jev. Preencha 'Quando usar esta IA' em pelo menos uma IA.");
+                title: organizationId is null
+                    ? "Nenhuma IA disponível para o Jev. Preencha 'Quando usar esta IA' em pelo menos uma IA."
+                    : "Nenhuma IA desta organização está disponível para o Jev. Preencha 'Quando usar esta IA' em pelo menos uma.");
 
         var decision = await RouteAsync(router, eligible, question, logger, ct);
         if (decision is null)
@@ -79,7 +104,8 @@ public static class JevAsk
             if (!decision.Confident)
                 return Outcome(logger, eligible.Count, new Response("clarify", Candidates: Refs(eligible, MaxOptions)));
 
-            await GapRecorder.RecordAsync(db, currentUser.Id!, null, null, question, logger, ct);
+            // A question the organization's Jev could not route still belongs to that organization.
+            await GapRecorder.RecordAsync(db, currentUser.Id!, organizationId, null, question, logger, ct);
             return Outcome(logger, eligible.Count, new Response("noMatch"));
         }
 

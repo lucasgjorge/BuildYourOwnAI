@@ -40,6 +40,7 @@ uma organização. O chat do web reusa `useAsk`/`useJev` e os componentes de res
 | domain | termo novo: `Conversa` - a thread de mensagens de uma organização na tela. Não é entidade: fica só no navegador (door 2) |
 | contrato | rota nova `POST /api/organizations/{id}/jev/ask`, com a mesma resposta de `POST /api/jev/ask`. Nada existente muda de assinatura |
 | web | `/organizations/{id}` deixa de ser a página de administração e vira o chat; a administração vai para `/organizations/{id}/knowledge`. `/assistants/{id}` redireciona para o chat da organização com a IA fixada. A lista `/organizations` vira a barra lateral; `/organizations` sozinho abre a primeira organização, ou a criação quando não há nenhuma. Os testes de tela do jev-gaps (C56-C60) e os do rag-mvp migrados são re-apontados para as telas novas, sem enfraquecer asserções |
+| web | rota nova `/` = página inicial pública (S4). Rotas desconhecidas continuam indo para `/organizations` |
 | web | identidade visual nova (tokens de cor e tipografia, fontes do Google Fonts) aplicada a todas as telas autenticadas; login e registro recebem os mesmos tokens |
 | stored data | nada a migrar |
 
@@ -118,6 +119,20 @@ A administração continua completa, fora do caminho do chat.
 
 **Independent test:** abrir a aba Base, subir um documento, criar uma IA com "Quando usar", voltar para Conversa e ver a IA no guia da thread vazia.
 
+### S4: Página inicial pública (P2)
+
+Quem chega ao produto entende o que ele faz e o que dá para montar antes de criar conta. Pedido do usuário durante o build (2026-09-24).
+
+**Acceptance Criteria**
+
+28. WHEN qualquer pessoa abre `/` THEN the system SHALL mostrar a página inicial, sem exigir sessão, com um título que diz o que o produto faz
+29. The página inicial SHALL explicar o funcionamento em 3 passos em ordem: montar a organização com documentos, criar IAs com "Quando usar", perguntar no chat onde o Jev escolhe quem responde e cita as fontes
+30. The página inicial SHALL mostrar exemplos do que dá para montar, cada um com um nome e as IAs que ele teria, e explicar que o que ninguém sabe responder vira Lacuna
+31. WHILE não há sessão the página inicial SHALL mostrar "Criar conta" (link para `/register`) e "Entrar" (link para `/login`)
+32. WHILE há sessão the página inicial SHALL mostrar "Abrir o chat" (link para `/organizations`) no lugar de "Criar conta" e "Entrar"
+
+**Independent test:** abrir `/` sem login, ler os 3 passos, clicar em "Criar conta".
+
 ## Out of scope
 
 | Excluded | Why |
@@ -126,6 +141,7 @@ A administração continua completa, fora do caminho do chat.
 | Streaming da resposta | etapa 2 |
 | Editar IA ou organização | não existe edição ainda |
 | Tema escuro | não pedido; tokens ficam prontos para ele |
+| Conteúdo de marketing além da página inicial (preços, blog, SEO) | não pedido; monetização é a etapa 4 |
 
 ## Assumptions
 
@@ -153,6 +169,8 @@ A administração continua completa, fora do caminho do chat.
 | screen `Base` | todos os estados | AC 23, 24 (herdados do jev-gaps) |
 | screen `Organizações` (vazia) | empty | AC 8 |
 | barra lateral | conteúdo e ordem | AC 9; ordem = `GET /api/organizations` (mais recente primeiro) |
+| screen `Início` | conteúdo e o que fazer em seguida | AC 28-32 |
+| screen `Início` | loading, error, empty | n/a - conteúdo estático; enquanto a sessão não é conhecida mostra os botões de quem não tem sessão (AC 31) |
 | API `POST /api/organizations/{id}/jev/ask` | error shape and codes | AC 4, 5, 6 |
 | API `POST /api/organizations/{id}/jev/ask` | rate limit | AC 6 |
 | API `POST /api/organizations/{id}/jev/ask` | versioning | n/a - único consumidor é a SPA na mesma origem |

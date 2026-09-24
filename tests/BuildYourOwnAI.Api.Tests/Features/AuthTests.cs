@@ -109,6 +109,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
             { "GET", $"/api/assistants/{id}" },
             { "POST", $"/api/assistants/{id}/ask" },
             { "POST", "/api/jev/ask" },
+            { "POST", $"/api/organizations/{id}/jev/ask" },
             { "GET", "/api/gaps" },
             { "POST", $"/api/gaps/{id}/answer" },
             { "POST", $"/api/gaps/{id}/dismiss" },
