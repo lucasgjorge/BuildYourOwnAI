@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 12,
+  "next_id": 15,
   "lessons": [
     {
       "id": "L-001",
@@ -202,6 +202,60 @@
       ],
       "created": "2026-09-24T14:39:07Z",
       "last_seen": "2026-09-24T14:39:07Z"
+    },
+    {
+      "id": "L-012",
+      "key": "ac_gap::when a criterion lists several things that must never be logged put a marker in each one and assert every marker including outputs the fake only produces on a trigger",
+      "text": "When a criterion lists several things that must never be logged, put a marker in each one and assert every marker, including outputs the fake only produces on a trigger",
+      "signal": "ac_gap",
+      "scope": "observability",
+      "status": "candidate",
+      "features": [
+        "source-preview"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "jev-choice round 1: AC 9 members (routing descriptions, router reply) had no assertion (observability)"
+      ],
+      "created": "2026-09-24T18:04:30Z",
+      "last_seen": "2026-09-24T18:04:30Z"
+    },
+    {
+      "id": "L-013",
+      "key": "surviving_mutant::prove a layout invariant in the state where the most components are on screen not the simplest one",
+      "text": "Prove a layout invariant in the state where the most components are on screen, not the simplest one",
+      "signal": "surviving_mutant",
+      "scope": "web-ui",
+      "status": "candidate",
+      "features": [
+        "source-preview"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "source-preview round 1: C17 proven only for not-found answers; SourcePreview called scrollIntoView (web-ui)"
+      ],
+      "created": "2026-09-24T18:04:30Z",
+      "last_seen": "2026-09-24T18:04:30Z"
+    },
+    {
+      "id": "L-014",
+      "key": "ac_gap::give every configuration key a criterion names its own check not only the first key of the section",
+      "text": "Give every configuration key a criterion names its own check, not only the first key of the section",
+      "signal": "ac_gap",
+      "scope": "config",
+      "status": "candidate",
+      "features": [
+        "source-preview"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "source-preview round 1: AI:Routing:TimeoutSeconds unproven (config)"
+      ],
+      "created": "2026-09-24T18:04:30Z",
+      "last_seen": "2026-09-24T18:04:30Z"
     }
   ]
 }

@@ -80,6 +80,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: 0bd08bf: lane colors only in inline styles were dropped from Tailwind v4 build (web-ui)
 - last seen: 2026-09-24T14:39:07Z
 
+### L-012 - When a criterion lists several things that must never be logged, put a marker in each one and assert every marker, including outputs the fake only produces on a trigger
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `observability` · harmful: 0
+- features: source-preview
+- evidence: jev-choice round 1: AC 9 members (routing descriptions, router reply) had no assertion (observability)
+- last seen: 2026-09-24T18:04:30Z
+
+### L-013 - Prove a layout invariant in the state where the most components are on screen, not the simplest one
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `web-ui` · harmful: 0
+- features: source-preview
+- evidence: source-preview round 1: C17 proven only for not-found answers; SourcePreview called scrollIntoView (web-ui)
+- last seen: 2026-09-24T18:04:30Z
+
+### L-014 - Give every configuration key a criterion names its own check, not only the first key of the section
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: source-preview
+- evidence: source-preview round 1: AI:Routing:TimeoutSeconds unproven (config)
+- last seen: 2026-09-24T18:04:30Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -20,10 +20,10 @@
 
 ## Handoff
 
-**Feature**: org-chat (chat da organização com Jev, identidade visual nova, página inicial)
-**Where**: C1-C33 fechados; Verifier rodada 2 = PASS em `932c987`; `validate_verification.py` exit 0. jev-gaps também PASS (rodada 2 em `95be488`)
-**In progress**: nada
-**Next step**: trocar `AI:OpenRouter:Model` por um id válido da OpenRouter (hoje `jev-latest`) e testar o Jev de verdade; depois a etapa 2 (histórico persistido e streaming)
-**Blockers**: modelo da OpenRouter e chave da OpenAI de produção (blocks go-live)
+**Feature**: source-preview (prévia do trecho + escolha automática sem o nome "Jev") e jev-choice (primitiva "choice")
+**Where**: ambos PASS na rodada 2 em `2d13fc7`; `validate_verification.py` exit 0 nos dois
+**In progress**: study-mode no worktree `../BuildYourOwnAI-study` (branch `study-mode`): checks em `1bc24c8`, tabelas e migration em `76e3f6e`; faltam as rotas, a tela e a verificação
+**Next step**: terminar o study-mode, verificar e juntar ao `main`; depois o admin-usage (plano em `fd5e008`, aguardando aprovação)
+**Blockers**: preços em `AI:Pricing` e `Admin:Emails` de produção (admin-usage, blocks go-live); chave da OpenAI de produção
 **Uncommitted**: nada
-**Branch**: main (não enviado ao origin). Dev: conta `admin@buildyourownai.local` criada no startup em Development
+**Branch**: main (não enviado ao origin)
