@@ -58,8 +58,8 @@ no código que mudou e responder dúvidas de "onde/como coloco isto". Você não
 ### D. IA e RAG (AD-004, AD-005)
 
 - Handlers dependem só de `IChatClient` e `IEmbeddingGenerator<string, Embedding<float>>`.
-  Qualquer `using OpenAI` fora do registro de DI é achado. O roteador do Jev usa o `IChatClient`
-  keyed `"router"` (AD-011); ele nunca recebe instruções de IA nem conteúdo de documento.
+  Qualquer `using OpenAI` fora do registro de DI é achado. O roteador do Jev é o `IJevChoice`
+  (AD-012, primitiva "choice" via OpenRouter); ele nunca recebe instruções de IA nem conteúdo de documento.
 - Nome de modelo e dimensão vêm de configuração/constante única. Número `1536` espalhado é achado.
 - Embeddings em lote (`GenerateAsync` com a lista de chunks), nunca um request por chunk num loop.
 - O prompt enviado ao chat monta instruções do assistente + trechos recuperados + pergunta, e só isso.

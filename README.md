@@ -22,7 +22,7 @@ uma vez e a resposta passa a ser conhecimento da organização.
 | Web | React 19 + TypeScript + Vite, TanStack Query, Tailwind (`src/web`) |
 | Banco | Postgres 17 + pgvector (relacional e vetorial no mesmo banco) |
 | Auth | ASP.NET Core Identity, cookie de sessão HttpOnly na mesma origem |
-| IA | OpenAI (`text-embedding-3-small` + `gpt-4.1-mini`) via `Microsoft.Extensions.AI`; roteador do Jev via OpenRouter (cliente keyed `router`) |
+| IA | OpenAI (`text-embedding-3-small` + `gpt-4.1-mini`) via `Microsoft.Extensions.AI`; roteador do Jev = `jev-latest` (primitiva "choice" da TypeSafe) via OpenRouter, atrás de `IJevChoice` |
 
 ## Pré-requisitos
 
@@ -47,9 +47,9 @@ são aplicadas automaticamente quando a API inicia em `Development`.
 
 ```bash
 dotnet user-secrets set "AI:OpenAI:ApiKey" "sk-..." --project src/BuildYourOwnAI.Api
-# Jev (opcional): um modelo da OpenRouter que aceite resposta em JSON, no formato fornecedor/modelo
+# Jev (opcional): o nome nu do modelo, sem o prefixo "typesafe/"
 dotnet user-secrets set "AI:OpenRouter:ApiKey" "sk-or-..." --project src/BuildYourOwnAI.Api
-dotnet user-secrets set "AI:OpenRouter:Model" "<fornecedor/modelo>" --project src/BuildYourOwnAI.Api
+dotnet user-secrets set "AI:OpenRouter:Model" "jev-latest" --project src/BuildYourOwnAI.Api
 ```
 
 A chave fica em user-secrets, fora do repositório. Os modelos podem ser trocados em
@@ -171,7 +171,7 @@ As três rotas de pergunta somam no mesmo limite de 20 perguntas por minuto por 
 | Sintoma | Causa / solução |
 | --- | --- |
 | Upload ou pergunta respondem `502` | Chave da OpenAI ausente ou inválida (passo 2) |
-| O Jev sempre pergunta "Qual destas IAs deve responder?" | Falta `AI:OpenRouter:*`, o modelo não existe na OpenRouter ou não devolve JSON (passo 2) |
+| O Jev sempre pergunta "Qual destas IAs deve responder?" com as IAs em ordem alfabética | A chamada ao Jev falhou: falta `AI:OpenRouter:*`, a chave é inválida ou o modelo não é `jev-latest` (o log mostra `Jev router call failed`). Em ordem de probabilidade, é só confiança abaixo de `AI:Jev:ConfidenceThreshold` (0.6) |
 | O Jev responde que nenhuma IA está disponível (`422`) | Nenhuma IA da organização tem "Quando usar esta IA" preenchido |
 | `DockerUnavailableException` nos testes | Docker parado, ou falta o `DOCKER_HOST` no Windows (veja Testes). O `docker compose` funciona sem ele |
 | A API não conecta no banco | `docker compose up -d` não rodou, ou a porta 5432 está ocupada por outro Postgres |

@@ -57,7 +57,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.RemoveAll<IChatClient>();
             services.RemoveAll<IEmbeddingGenerator<string, Embedding<float>>>();
             services.AddSingleton<IChatClient>(Chat);
-            services.AddKeyedSingleton<IChatClient>(AiServiceCollectionExtensions.RouterKey, Router);
+            services.RemoveAll<IJevChoice>();
+            services.AddSingleton<IJevChoice>(Router);
             services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(Embeddings);
         });
     }

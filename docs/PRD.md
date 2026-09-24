@@ -46,7 +46,7 @@ O "tenant" continua sendo o usuário individual. Ele já agrupa as IAs em **orga
 | Etapa | Objetivo | Principais capacidades |
 | --- | --- | --- |
 | **1 - RAG MVP** (entregue) | provar o ciclo criar → anexar → perguntar | login e-mail/senha; CRUD de IAs; upload PDF/TXT/MD até 10 MB; pergunta com resposta e fontes; UI mínima |
-| **1b - Organizações, Jev e Lacunas** (entregue) | várias IAs sobre o mesmo material, sem escolher na mão | organizações com documentos compartilhados; Jev por organização e global (roteador via OpenRouter); caixa de Lacunas; chat da organização como tela principal; página inicial pública |
+| **1b - Organizações, Jev e Lacunas** (entregue) | várias IAs sobre o mesmo material, sem escolher na mão | organizações com documentos compartilhados; Jev por organização e global (roteador `jev-latest` via OpenRouter); caixa de Lacunas; chat da organização como tela principal; página inicial pública |
 | 2 - Conversa | experiência de chat real | histórico persistido e multi-turno (hoje a thread vive só na tela), streaming, ingestão em background para arquivos grandes, mais formatos (DOCX, HTML, URL) |
 | 3 - Publicar | a IA sai da plataforma | link público do chat da organização (com o Jev), widget embutível, WhatsApp, API key |
 | 4 - Monetizar | receita | planos, quotas de uso (perguntas, armazenamento), cobrança |
@@ -109,5 +109,5 @@ Metas a validar com os primeiros usuários. Nenhuma tem baseline ainda.
 | Custo da OpenAI sem controle por usuário | rate limit na etapa 1; quotas na etapa 4 |
 | PDFs escaneados sem texto | rejeitados com 422; OCR fora do escopo |
 | Chave da OpenAI de produção | pendente - bloqueia o go-live, não o desenvolvimento |
-| Modelo da OpenRouter para o Jev | pendente - sem um modelo que devolva JSON, o Jev sempre pede ao usuário que escolha a IA |
+| Modelo do Jev | `jev-latest` (TypeSafe "choice") via OpenRouter; limiar de confiança 0.6 ainda sem calibração com perguntas reais |
 | Pergunta e descrições das IAs vão para um terceiro (OpenRouter) | só nome, organização e "Quando usar" vão ao roteador; nunca instruções nem documentos (jev-gaps, AC 27) |

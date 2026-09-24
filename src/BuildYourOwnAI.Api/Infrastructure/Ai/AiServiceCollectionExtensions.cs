@@ -12,6 +12,7 @@ public sealed class AiOptions
     public string EmbeddingModel { get; set; } = "text-embedding-3-small";
     public OpenAiSection OpenAI { get; set; } = new();
     public OpenRouterSection OpenRouter { get; set; } = new();
+    public JevSection Jev { get; set; } = new();
 
     public sealed class OpenAiSection
     {
@@ -22,16 +23,19 @@ public sealed class AiOptions
     {
         public string? ApiKey { get; set; }
         public string? Model { get; set; }
+        public string BaseAddress { get; set; } = "https://openrouter.ai/api/v1/";
+    }
+
+    public sealed class JevSection
+    {
+        /// <summary>At or above this confidence Jev's choice is followed; below it, the user picks (door 2, jev-choice).</summary>
+        public double ConfidenceThreshold { get; set; } = 0.6;
+        public int TimeoutSeconds { get; set; } = 10;
     }
 }
 
 public static class AiServiceCollectionExtensions
 {
-    /// <summary>Service key of the chat client that only routes Jev questions (AD-011).</summary>
-    public const string RouterKey = "router";
-
-    private static readonly Uri OpenRouterEndpoint = new("https://openrouter.ai/api/v1");
-
     /// <summary>
     /// Door 6: handlers only see <see cref="IChatClient"/> and <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
     /// Without a key the app still starts; every AI call then fails inside the handler and surfaces as 502.
@@ -39,17 +43,19 @@ public static class AiServiceCollectionExtensions
     public static IServiceCollection AddAi(this IServiceCollection services, IConfiguration configuration)
     {
         var options = configuration.GetSection("AI").Get<AiOptions>() ?? new AiOptions();
+        services.Configure<AiOptions>(configuration.GetSection("AI"));
 
-        // Door 4: OpenRouter speaks the OpenAI protocol. Without key and model, Jev falls back to asking the user.
+        // Door 1 (jev-choice, AD-012): Jev is the "choice" primitive on OpenRouter. Without key and model, Jev falls back to asking the user.
         if (string.IsNullOrWhiteSpace(options.OpenRouter.ApiKey) || string.IsNullOrWhiteSpace(options.OpenRouter.Model))
         {
-            services.AddKeyedSingleton<IChatClient, UnconfiguredAiClient>(RouterKey);
+            services.AddSingleton<IJevChoice, UnconfiguredJevChoice>();
         }
         else
         {
-            var openRouter = new OpenAIClient(
-                new ApiKeyCredential(options.OpenRouter.ApiKey), new OpenAIClientOptions { Endpoint = OpenRouterEndpoint });
-            services.AddKeyedSingleton(RouterKey, openRouter.GetChatClient(options.OpenRouter.Model).AsIChatClient());
+            var model = options.OpenRouter.Model;
+            services.AddHttpClient(nameof(OpenRouterJevChoice), client => OpenRouterJevChoice.Configure(client, options.OpenRouter, options.Jev));
+            services.AddTransient<IJevChoice>(sp =>
+                new OpenRouterJevChoice(sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(OpenRouterJevChoice)), model));
         }
 
         if (string.IsNullOrWhiteSpace(options.OpenAI.ApiKey))

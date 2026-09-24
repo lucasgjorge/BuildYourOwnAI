@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using BuildYourOwnAI.Api.Infrastructure.Ai;
 using Microsoft.Extensions.AI;
 
 namespace BuildYourOwnAI.Api.Tests.Infrastructure;
@@ -127,48 +128,53 @@ public sealed class FakeChatClient : IChatClient
     public void Dispose() { }
 }
 
-/// <summary>Stands in for the OpenRouter client behind the "router" key; replies by the __ROUTE_x__ marker in the question.</summary>
-public sealed partial class FakeRouterClient : IChatClient
+/// <summary>
+/// Stands in for the Jev "choice" primitive; decides by the __ROUTE_x__ marker in the question (the state).
+/// A number picks that option with confidence 1, LOWn picks it with 0.3, NONE picks "nenhuma", TEXT picks a key
+/// that was never offered, THROW fails. The chosen option gets the probability of its confidence, the rest share what is left, each below the chosen one.
+/// </summary>
+public sealed partial class FakeRouterClient : IJevChoice
 {
     public const string OutputMarker = "router-output-5d1c";
 
-    public ConcurrentQueue<IReadOnlyList<ChatMessage>> Calls { get; } = new();
+    public ConcurrentQueue<string> Calls { get; } = new();
 
-    public Task<ChatResponse> GetResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    /// <summary>When set, answers every call instead of the markers (reset it in a finally).</summary>
+    public Func<IReadOnlyDictionary<string, string>, JevChoice>? Override { get; set; }
+
+    public Task<JevChoice> ChooseAsync(
+        string state, string instructions, IReadOnlyDictionary<string, string> criteria, CancellationToken ct)
     {
-        var list = messages.ToList();
-        Calls.Enqueue(list);
-        var text = string.Join("\n", list.Select(m => m.Text));
-        var behaviour = Marker().Match(text) is { Success: true } m ? m.Groups[1].Value : "1";
+        Calls.Enqueue(string.Join("\n", [state, instructions, .. criteria.Select(c => $"{c.Key}: {c.Value}")]));
+        if (Override is { } answer)
+            return Task.FromResult(answer(criteria));
 
-        var reply = behaviour switch
+        var behaviour = Marker().Match(state) is { Success: true } m ? m.Groups[1].Value : "1";
+        return Task.FromResult(behaviour switch
         {
             "THROW" => throw new HttpRequestException(FakeAiTriggers.ProviderSecretMessage),
-            "TEXT" => $"eu escolheria a primeira {OutputMarker}",
-            "NONE" => Decision(null, true),
-            "NONELOW" => Decision(null, false),
-            _ when behaviour.StartsWith("LOW") => Decision(int.Parse(behaviour[3..]), false),
-            _ => Decision(int.Parse(behaviour), true),
-        };
-        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
+            "TEXT" => new JevChoice(OutputMarker, 1, new Dictionary<string, double>()),
+            "NONE" => Pick(criteria, "nenhuma", 0.9),
+            "NONELOW" => Pick(criteria, "nenhuma", 0.3),
+            _ when behaviour.StartsWith("LOW") => Pick(criteria, behaviour[3..], 0.3),
+            _ => Pick(criteria, behaviour, 1),
+        });
     }
 
-    private static string Decision(int? choice, bool confident) =>
-        JsonSerializer.Serialize(new { choice, confident, reason = OutputMarker });
+    private static JevChoice Pick(IReadOnlyDictionary<string, string> criteria, string key, double confidence)
+    {
+        var others = criteria.Keys.Where(k => k != key).ToList();
+        // The chosen option is always the most likely one, as it is for the real primitive.
+        var share = others.Count == 0 ? 0 : Math.Min((1 - confidence) / others.Count, confidence / 2);
+        var probabilities = others.ToDictionary(k => k, _ => share);
+        probabilities[key] = confidence;
+        return new JevChoice(key, confidence, probabilities);
+    }
 
-    public string PromptContaining(string marker) =>
-        Calls.Select(c => string.Join("\n", c.Select(m => m.Text))).Single(t => t.Contains(marker));
+    public string PromptContaining(string marker) => Calls.Single(c => c.Contains(marker));
 
-    public bool ReceivedCallContaining(string marker) => Calls.Any(c => c.Any(m => m.Text.Contains(marker)));
+    public bool ReceivedCallContaining(string marker) => Calls.Any(c => c.Contains(marker));
 
     [GeneratedRegex(@"__ROUTE_([A-Z]*\d*)__")]
     private static partial Regex Marker();
-
-    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
-
-    public object? GetService(Type serviceType, object? serviceKey = null) => null;
-    public void Dispose() { }
 }
