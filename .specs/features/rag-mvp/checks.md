@@ -106,25 +106,25 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 
 ### S5 - UI web · ~20 files · ~60 KB · ~15k
 
-**C29** - Com `GET /api/auth/manage/info` respondendo `401`, abrir `/assistants` e `/assistants/abc` leva à tela de `/login`; `/register` abre sem redirecionar (AC 29)
+**C29** - Com `GET /api/auth/manage/info` respondendo `401`, abrir `/assistants` e `/assistants/abc` leva à tela de `/login`; `/register` abre sem redirecionar (AC 29) ✓
 Proof: `npm --prefix src/web run test -- -t "redirects to login without session"`
 
-**C30** - Logado e com `GET /api/assistants` = `[]`, `/assistants` mostra "Você ainda não criou nenhuma IA" e o botão "Criar IA" (AC 30)
+**C30** - Logado e com `GET /api/assistants` = `[]`, `/assistants` mostra "Você ainda não criou nenhuma IA" e o botão "Criar IA" (AC 30) ✓
 Proof: `npm --prefix src/web run test -- -t "shows empty state"`
 
-**C31** - `/assistants/{id}` mostra a lista de documentos (com o `fileName` de cada um), o campo de upload e a caixa de pergunta (AC 31)
+**C31** - `/assistants/{id}` mostra a lista de documentos (com o `fileName` de cada um), o campo de upload e a caixa de pergunta (AC 31) ✓
 Proof: `npm --prefix src/web run test -- -t "assistant page shows documents upload and question"`
 
-**C32** - Depois de perguntar, a página mostra o `answer` e o `fileName` de cada fonte (AC 32)
+**C32** - Depois de perguntar, a página mostra o `answer` e o `fileName` de cada fonte (AC 32) ✓
 Proof: `npm --prefix src/web run test -- -t "shows answer and source file names"`
 
-**C33** - Quando a Api responde problem details, a página mostra o `title` e mantém o texto digitado: no formulário de criar IA e na caixa de pergunta (AC 33)
+**C33** - Quando a Api responde problem details, a página mostra o `title` e mantém o texto digitado: no formulário de criar IA e na caixa de pergunta (AC 33) ✓
 Proof: `npm --prefix src/web run test -- -t "shows problem title and keeps input"`
 
-**C34** - Clicar em apagar (assistente e documento) abre confirmação; cancelar não chama `DELETE`; confirmar chama `DELETE` (AC 34)
+**C34** - Clicar em apagar (assistente e documento) abre confirmação; cancelar não chama `DELETE`; confirmar chama `DELETE` (AC 34) ✓
 Proof: `npm --prefix src/web run test -- -t "delete asks for confirmation"`
 
-**C35** - Durante o upload e durante a pergunta, o botão que disparou a ação fica desabilitado e mostra "Processando..." (AC 35)
+**C35** - Durante o upload e durante a pergunta, o botão que disparou a ação fica desabilitado e mostra "Processando..." (AC 35) ✓
 Proof: `npm --prefix src/web run test -- -t "disables button while processing"`
 
 ### S6 - Portas e transversais · 5 files · ~20 KB · ~5k
@@ -232,3 +232,6 @@ Cost: 1 classe de teste de unidade (chunker); o resto já estava na fronteira. A
 
 - Repositório novo: o custo são arquivos escritos, não lidos. S1-S4 + S6 ≈ 24 arquivos ≈ 140 KB ≈ 35k; S5 entra no web com ≈ 20 arquivos ≈ 60 KB ≈ 15k; total ≈ 50k, abaixo do budget de 150k - um builder
 - Mechanism: one builder (dentro do budget, sem pergunta)
+- **Boundary:** C1-C28, C36-C44 fechados em `3d64515`; C29-C35 fechados no commit do web (este)
+- **Settled mid-build:** nenhum esclarecimento do usuário durante o build. Door 5b adicionada ao `Landing` antes do código (filtro de dono também em `Document`/`Chunk`)
+- **Abandoned:** ambiente jsdom nos testes do web - o `FormData` do jsdom não é aceito pelo `fetch` do Node, então o upload nunca chegava ao MSW; trocado por happy-dom. `vi.spyOn(window, 'confirm')` - happy-dom não define `confirm`; o teste atribui um `vi.fn()`
