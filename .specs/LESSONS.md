@@ -62,6 +62,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: round 1: C55 list-error test not selected by its -t filter (web-ui)
 - last seen: 2026-09-24T13:52:34Z
 
+### L-009 - When a claim says items are appended or ordered, assert the positions of the items, not only that each one is present
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `web-ui` · harmful: 0
+- features: org-chat
+- evidence: org-chat round 1: prepend in Thread.tsx survived C13 (web-ui)
+- last seen: 2026-09-24T14:39:07Z
+
+### L-010 - Give every field a list item renders its own assertion, including the fallback text for a null value
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `web-ui` · harmful: 0
+- features: org-chat
+- evidence: org-chat round 1: Base routingDescription unproven (OrganizationPage.tsx:154) (web-ui)
+- last seen: 2026-09-24T14:39:07Z
+
+### L-011 - Declare CSS variables read only from inline styles outside Tailwind @theme, and check the built CSS contains them
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `web-ui` · harmful: 0
+- features: org-chat
+- evidence: 0bd08bf: lane colors only in inline styles were dropped from Tailwind v4 build (web-ui)
+- last seen: 2026-09-24T14:39:07Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

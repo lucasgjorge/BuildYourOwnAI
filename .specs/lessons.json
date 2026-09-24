@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 9,
+  "next_id": 12,
   "lessons": [
     {
       "id": "L-001",
@@ -148,6 +148,60 @@
       ],
       "created": "2026-09-24T13:52:34Z",
       "last_seen": "2026-09-24T13:52:34Z"
+    },
+    {
+      "id": "L-009",
+      "key": "surviving_mutant::when a claim says items are appended or ordered assert the positions of the items not only that each one is present",
+      "text": "When a claim says items are appended or ordered, assert the positions of the items, not only that each one is present",
+      "signal": "surviving_mutant",
+      "scope": "web-ui",
+      "status": "candidate",
+      "features": [
+        "org-chat"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "org-chat round 1: prepend in Thread.tsx survived C13 (web-ui)"
+      ],
+      "created": "2026-09-24T14:39:07Z",
+      "last_seen": "2026-09-24T14:39:07Z"
+    },
+    {
+      "id": "L-010",
+      "key": "ac_gap::give every field a list item renders its own assertion including the fallback text for a null value",
+      "text": "Give every field a list item renders its own assertion, including the fallback text for a null value",
+      "signal": "ac_gap",
+      "scope": "web-ui",
+      "status": "candidate",
+      "features": [
+        "org-chat"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "org-chat round 1: Base routingDescription unproven (OrganizationPage.tsx:154) (web-ui)"
+      ],
+      "created": "2026-09-24T14:39:07Z",
+      "last_seen": "2026-09-24T14:39:07Z"
+    },
+    {
+      "id": "L-011",
+      "key": "spec_precision_gap::declare css variables read only from inline styles outside tailwind theme and check the built css contains them",
+      "text": "Declare CSS variables read only from inline styles outside Tailwind @theme, and check the built CSS contains them",
+      "signal": "spec_precision_gap",
+      "scope": "web-ui",
+      "status": "candidate",
+      "features": [
+        "org-chat"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "0bd08bf: lane colors only in inline styles were dropped from Tailwind v4 build (web-ui)"
+      ],
+      "created": "2026-09-24T14:39:07Z",
+      "last_seen": "2026-09-24T14:39:07Z"
     }
   ]
 }
