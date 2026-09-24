@@ -15,4 +15,13 @@ describe('global styles', () => {
     expect(reduced![1]).toMatch(/animation:\s*none !important/)
     expect(reduced![1]).toMatch(/transition:\s*none !important/)
   })
+
+  // Lane colors are read only from inline styles; inside @theme, Tailwind would drop them from the build.
+  it('lane colors are declared outside the tailwind theme', () => {
+    const root = css.match(/:root\s*\{([^}]*)\}/)
+    expect(root).not.toBeNull()
+    for (let lane = 1; lane <= 6; lane++) expect(root![1]).toMatch(new RegExp(`--color-lane-${lane}:\s*#`))
+    const theme = css.match(/@theme\s*\{([^}]*)\}/)![1]
+    expect(theme).not.toMatch(/--color-lane-/)
+  })
 })

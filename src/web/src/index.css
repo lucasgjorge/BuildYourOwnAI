@@ -15,8 +15,11 @@
   --color-jev-soft: #e2f1ec;
   --color-danger: #b42318;
   --color-danger-soft: #fdecea;
+}
 
-  /* One lane per AI of an organization, by position. */
+/* One lane per AI of an organization, by position. Outside @theme on purpose: they are only read from
+   inline styles (shared/lanes.ts), and Tailwind drops theme variables that no class uses. */
+:root {
   --color-lane-1: #c2410c;
   --color-lane-2: #6d28d9;
   --color-lane-3: #1d4ed8;
