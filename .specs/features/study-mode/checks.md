@@ -101,7 +101,7 @@ Proof: `npm --prefix src/web run test -- -t "right answer shows certo and option
 **C28** - Resposta errada: a escolhida fica `data-state="wrong"`, a certa `data-state="correct"`, aparece "A resposta certa é: <texto>" e a explicação, e a prévia "Prévia do trecho" abre sozinha com o trecho de origem (`chunks/{chunkIndex}` do documento da fonte) (AC 23) ✓
 Proof: `npm --prefix src/web run test -- -t "wrong answer shows the right one with the preview"`
 
-**C29** - "Próxima pergunta" fecha a prévia e mostra "Pergunta 2 de 3"; depois da última, mostra "Você acertou 1 de 3" e "Estudar de novo" volta à escolha de documentos (AC 24, AC 25) ✓
+**C29** - "Próxima pergunta" fecha a prévia e mostra "Pergunta 2 de 3"; a última mostra a correção e "Ver resultado"; clicar mostra "Você acertou 1 de 3", e "Estudar de novo" volta à escolha de documentos (AC 24, AC 25) ✓
 Proof: `npm --prefix src/web run test -- -t "study moves through questions to the result"`
 
 **C30** - Um `502` na criação mostra o `title` e mantém os documentos e a quantidade escolhidos; um `409` na resposta mostra o `title` e mantém a alternativa escolhida e "Responder" habilitado (AC 26) ✓

@@ -120,7 +120,7 @@ A rodada de estudo inteira sem sair da organização.
 22. WHEN a resposta está certa THEN the aba SHALL marcar a alternativa em verde, mostrar "Certo!" e a explicação, e oferecer "Ver no documento", que abre a prévia do trecho
 23. WHEN a resposta está errada THEN the aba SHALL marcar a escolhida em vermelho e a certa em verde, mostrar "A resposta certa é: <texto da certa>" e a explicação, e abrir sozinha a prévia do trecho de origem à direita
 24. WHEN o usuário clica em "Próxima pergunta" THEN the aba SHALL fechar a prévia e mostrar a pergunta seguinte
-25. WHEN a última pergunta é respondida THEN the aba SHALL mostrar "Você acertou X de M" e o botão "Estudar de novo", que volta à escolha de documentos
+25. WHEN a última pergunta é respondida THEN the aba SHALL mostrar a correção dela como nas outras, com o botão "Ver resultado" no lugar de "Próxima pergunta"; clicar SHALL mostrar "Você acertou X de M" e o botão "Estudar de novo", que volta à escolha de documentos (confirmado pelo usuário em 2026-09-24)
 26. IF a criação ou a resposta falha THEN the aba SHALL mostrar o `title` do problem details e manter a escolha feita
 
 **Independent test:** estudar 5 perguntas da Nexora, errar uma de propósito e ver a certa com o trecho à direita.
