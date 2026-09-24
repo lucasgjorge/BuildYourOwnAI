@@ -38,7 +38,7 @@ criação de sessão do Study Mode) e o `AiProviderCall`; reusa o ASP.NET Identi
 | auth | `AddIdentityApiEndpoints<AppUser>().AddRoles<IdentityRole>()`: o cookie passa a carregar os papéis. Quem ganha o papel precisa entrar de novo para vê-lo |
 | config | `AI:Pricing:<modelo>:InputPerMillion` / `OutputPerMillion` (US$ por milhão de tokens) e `Admin:Emails` (lista) |
 | privacidade | o admin vê e-mail e números agregados de cada usuário, nunca pergunta, resposta ou documento |
-| stored data | tabela nova; o histórico começa no deploy, sem backfill (não há o que recuperar) |
+| stored data | tabela nova; o histórico começa no deploy, sem backfill (confirmado pelo usuário: contar daqui para frente) |
 
 ## Relations
 
@@ -64,7 +64,7 @@ Todo erro é problem details (AD-007).
 
 | One-way door | Literal shape | Alternative rejected |
 | --- | --- | --- |
-| 1. Tabela de uso | `ai_usage (id, user_id FK AspNetUsers cascade, occurred_at, request_id, mode varchar(16) check in ('ask','routing','study','upload','gap'), operation varchar(16) check in ('chat','embedding','choice'), model varchar(100), input_tokens int, output_tokens int, cost_usd numeric(12,6) null)`, índices `(occurred_at)` e `(user_id, occurred_at)`. `cost_usd` nulo quando o modelo não está na tabela de preços. `request_id` = `HttpContext.TraceIdentifier`, para contar ações (chamadas da mesma requisição) | Guardar só tokens e calcular o custo na leitura: uma mudança de preço reescreveria o custo histórico. Uma tabela de agregados por dia: perde o detalhe por operação e exige job de consolidação |
+| 1. Tabela de uso | `ai_usage (id, user_id FK AspNetUsers cascade, occurred_at, correlation_id varchar(64), mode varchar(16) check in ('ask','routing','study','upload','gap'), operation varchar(16) check in ('chat','embedding','choice'), model varchar(100), input_tokens int, output_tokens int, cost_usd numeric(12,6) null)`, índices `(occurred_at)` e `(user_id, occurred_at)`. `cost_usd` nulo quando o modelo não está na tabela de preços. `correlation_id` = o id de correlação da requisição: um middleware lê `X-Correlation-ID` do request (ou gera um GUID quando não vem), guarda para a requisição e devolve no header da resposta; conta ações (chamadas da mesma requisição) | Guardar só tokens e calcular o custo na leitura: uma mudança de preço reescreveria o custo histórico. Uma tabela de agregados por dia: perde o detalhe por operação e exige job de consolidação |
 | 2. Registro explícito nos pontos de chamada | `IUsageRecorder.RecordAsync(UsageMode mode, UsageOperation operation, string model, UsageDetails? usage, CancellationToken)`, scoped, chamado logo depois de cada chamada de IA bem-sucedida; grava com um `AppDbContext` de um escopo novo (fora da transação do request); exceção ao gravar vira log de aviso e não falha a requisição | Decorator de `IChatClient`/`IEmbeddingGenerator` (`DelegatingChatClient`): os testes trocam os clientes por fakes depois do registro, e o decorator sumiria justamente nos testes; o modo teria que vir de estado ambiente da requisição |
 | 3. Papel Admin | papel Identity `"Admin"` (`IdentityRole`), criado no startup se não existir; `Admin:Emails` (configuração) recebe o papel no startup; em Development, a conta `DevSeed:AdminEmail` também. Rotas de admin usam `RequireAuthorization(policy => policy.RequireRole("Admin"))` | Lista de e-mails checada a cada requisição, sem papel no banco: vira um segundo mecanismo quando os papéis da etapa 5 chegarem |
 | 4. Rotas | `GET /api/me` e `GET /api/admin/usage` num grupo novo `/api/admin` com a política de papel; não-admin logado recebe `403` | `isAdmin` em `GET /api/auth/manage/info`: é rota do Identity (`MapIdentityApi`), sem ponto de extensão para campos novos |
@@ -80,7 +80,7 @@ Toda chamada de IA deixa um registro com tokens, modo e custo.
 **Acceptance Criteria**
 
 1. WHEN `POST /api/assistants/{id}/ask` responde `200` THEN the system SHALL gravar 2 registros com modo `ask` para o usuário: `embedding` (a pergunta) e `chat`, com o modelo e os tokens de entrada e saída que o provedor informou
-2. WHEN uma rota de escolha automática responde `answered` THEN the system SHALL gravar com modo `routing` a chamada `choice` e as chamadas `embedding` e `chat` da resposta, todas com o mesmo `request_id`
+2. WHEN uma rota de escolha automática responde `answered` THEN the system SHALL gravar com modo `routing` a chamada `choice` e as chamadas `embedding` e `chat` da resposta, todas com o mesmo `correlation_id`
 3. WHEN um upload responde `201` THEN the system SHALL gravar com modo `upload` uma chamada `embedding` por lote de embeddings
 4. WHEN uma lacuna é respondida (`200`) THEN the system SHALL gravar com modo `gap` a chamada `embedding`
 5. WHEN uma sessão de estudo é criada (`201`) THEN the system SHALL gravar com modo `study` a chamada `chat`
@@ -110,7 +110,7 @@ Consumo e custo por usuário, e o modo mais usado, num período.
 
 **Acceptance Criteria**
 
-14. WHEN um admin chama `GET /api/admin/usage` com `from` e `to` THEN the system SHALL responder `200` com os totais do período (`calls`, `actions` = requisições distintas, tokens de entrada e saída, custo somado) só com registros de `from` 00:00 até `to` 23:59:59 (UTC)
+14. WHEN um admin chama `GET /api/admin/usage` com `from` e `to` THEN the system SHALL responder `200` com os totais do período (`calls`, `actions` = `correlation_id` distintos, tokens de entrada e saída, custo somado) só com registros de `from` 00:00 até `to` 23:59:59 (UTC)
 15. The system SHALL devolver `byUser` com todo usuário que teve uso no período (e-mail, chamadas, ações, tokens, custo), ordenado por custo decrescente e, sem custo, por tokens
 16. The system SHALL devolver `byMode` com os 5 modos (inclusive os sem uso, com zeros), ordenado por ações decrescentes
 17. WHEN `from` e `to` não vêm THEN the system SHALL usar os últimos 30 dias até hoje; e `since` SHALL ser a data do primeiro registro de uso existente, ou nulo
@@ -150,7 +150,7 @@ Consumo e custo por usuário, e o modo mais usado, num período.
 | Moeda | US$, como os provedores cobram | sem conversão de câmbio para manter | n |
 | Período máximo | 366 dias | consulta agregada simples, sem pré-cálculo | n |
 | Fuso das datas | UTC | o servidor grava em UTC; o relatório é por dia inteiro | n |
-| "Modo mais usado" | por ações (requisições), não por chamadas de IA | uma pergunta com escolha automática faz 3 chamadas; contar chamadas inflaria esse modo | n |
+| "Modo mais usado" | por ações (um `correlation_id` por requisição), não por chamadas de IA | uma pergunta com escolha automática faz 3 chamadas; contar chamadas inflaria esse modo | y |
 | Retenção de `ai_usage` | sem expurgo | volume pequeno nesta etapa | n |
 
 **Open questions:**
@@ -177,5 +177,5 @@ Consumo e custo por usuário, e o modo mais usado, num período.
 
 ## Sources
 
-- Conversa de 2026-09-24: "um usuário admin tem que ter acesso ao custo/consumo de tokens de cada usuário do sistema e qual modo de uso está sendo mais usado"; respostas: papel Admin do Identity; tokens + tabela de preços
+- Conversa de 2026-09-24: "um usuário admin tem que ter acesso ao custo/consumo de tokens de cada usuário do sistema e qual modo de uso está sendo mais usado"; respostas: papel Admin do Identity; tokens + tabela de preços; um id de correlação por requisição; contar daqui para frente
 - [docs/PRD.md](../../../docs/PRD.md) - etapa 4 (quotas) e o risco "custo sem controle por usuário"
