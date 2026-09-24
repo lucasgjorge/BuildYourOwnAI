@@ -38,6 +38,30 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: round 2 B1 - ListAssistants createdAt constant (api-contract)
 - last seen: 2026-09-24T02:04:45Z
 
+### L-005 - Build a dotnet test proof selector from the test class name, not the file name, and run the exact filter once to see it select a test
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `api-tests` · harmful: 0
+- features: jev-gaps
+- evidence: checks.md C50 (round 1): FullyQualifiedName~CrossCuttingTests matched no test (api-tests)
+- last seen: 2026-09-24T13:52:33Z
+
+### L-006 - When a claim names the log one step writes, assert the entry by its id within the window of that step, not any entry carrying the property
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `observability` · harmful: 0
+- features: jev-gaps
+- evidence: round 1 fault: GapRecorder log removed survived C50 (observability)
+- last seen: 2026-09-24T13:52:33Z
+
+### L-007 - Give every foreign key's delete rule in Relations its own check, including SET NULL links added by a door
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `data-model` · harmful: 0
+- features: jev-gaps
+- evidence: round 1 coverage: Gap->Document SET NULL (door 7) had no check (data-model)
+- last seen: 2026-09-24T13:52:34Z
+
+### L-008 - Give each test that proves part of a check its own Proof line, so every half of the check is selected by name
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `web-ui` · harmful: 0
+- features: jev-gaps
+- evidence: round 1: C55 list-error test not selected by its -t filter (web-ui)
+- last seen: 2026-09-24T13:52:34Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

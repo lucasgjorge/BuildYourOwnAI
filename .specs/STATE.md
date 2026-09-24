@@ -18,10 +18,10 @@
 
 ## Handoff
 
-**Feature**: rag-mvp
-**Where**: C1-C51 fechados; Verifier rodada 3 = PASS em `875d5c6`; `validate_verification.py` exit 0
+**Feature**: jev-gaps (Organizações, Jev, Lacunas)
+**Where**: C1-C63 fechados; Verifier rodada 2 = PASS em `95be488`; `validate_verification.py` exit 0
 **In progress**: nada
-**Next step**: configurar `AI:OpenAI:ApiKey` e testar o fluxo real no navegador; depois planejar a etapa 2 (conversa)
-**Blockers**: chave da OpenAI (blocks go-live)
+**Next step**: configurar `AI:OpenRouter:ApiKey` e `AI:OpenRouter:Model` (modelo com saída JSON) e testar o Jev no navegador; revisar o PRD (organizações saíram da etapa 5)
+**Blockers**: modelo da OpenRouter e chave da OpenAI de produção (blocks go-live)
 **Uncommitted**: nada
-**Branch**: main -> origin (github.com/lucasgjorge/BuildYourOwnAI, privado)
+**Branch**: main (não enviado ao origin)
