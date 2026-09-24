@@ -11,9 +11,9 @@ export const problem = (status: number, title: string) =>
   HttpResponse.json({ status, title }, { status, headers: { 'Content-Type': 'application/problem+json' } })
 
 export const loggedIn = (): HttpHandler =>
-  http.get('*/api/auth/manage/info', () => HttpResponse.json({ email: 'ana@test.local', isEmailConfirmed: false }))
+  http.get('*/api/auth/me', () => HttpResponse.json({ email: 'ana@test.local', fullName: 'Ana Souza' }))
 
-export const anonymous = (): HttpHandler => http.get('*/api/auth/manage/info', () => new HttpResponse(null, { status: 401 }))
+export const anonymous = (): HttpHandler => http.get('*/api/auth/me', () => new HttpResponse(null, { status: 401 }))
 
 export const organization = {
   id: 'o1',

@@ -10,9 +10,10 @@ export function RegisterPage() {
     <AuthForm
       title="Criar conta"
       submitLabel="Criar conta"
+      withFullName
       pending={register.isPending}
       error={register.error}
-      onSubmit={credentials => register.mutate(credentials, { onSuccess: () => navigate('/organizations') })}
+      onSubmit={registration => register.mutate(registration, { onSuccess: () => navigate('/organizations') })}
       footer={<>Já tem conta? <Link to="/login" className="underline">Entrar</Link></>}
     />
   )

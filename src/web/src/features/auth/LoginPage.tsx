@@ -12,7 +12,7 @@ export function LoginPage() {
       submitLabel="Entrar"
       pending={login.isPending}
       error={login.error}
-      onSubmit={credentials => login.mutate(credentials, { onSuccess: () => navigate('/organizations') })}
+      onSubmit={({ email, password }) => login.mutate({ email, password }, { onSuccess: () => navigate('/organizations') })}
       footer={<>Não tem conta? <Link to="/register" className="underline">Criar conta</Link></>}
     />
   )

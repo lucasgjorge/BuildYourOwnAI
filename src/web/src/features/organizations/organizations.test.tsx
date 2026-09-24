@@ -245,9 +245,9 @@ describe('organization base tab', () => {
 describe('session guard (rag-mvp C50)', () => {
   it('session guard states: loading while the session is unknown', async () => {
     const { gate, release } = deferred()
-    server.use(http.get('*/api/auth/manage/info', async () => {
+    server.use(http.get('*/api/auth/me', async () => {
       await gate
-      return HttpResponse.json({ email: 'ana@test.local', isEmailConfirmed: false })
+      return HttpResponse.json({ email: 'ana@test.local', fullName: 'Ana Souza' })
     }))
 
     renderApp('/organizations')
@@ -259,7 +259,7 @@ describe('session guard (rag-mvp C50)', () => {
   })
 
   it('session guard states: a non-401 failure shows the problem title and stays', async () => {
-    server.use(http.get('*/api/auth/manage/info', () => problem(500, 'Servidor indisponível')))
+    server.use(http.get('*/api/auth/me', () => problem(500, 'Servidor indisponível')))
 
     renderApp('/organizations')
 

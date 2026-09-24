@@ -62,25 +62,25 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests`
 
 ### S3 - O topo da tela mostra quem está logado · ~8 files · ~40 KB · ~10k
 
-**C15** - Em `/register`, o primeiro campo do formulário é "Nome completo", `required`, `maxLength` 100, seguido de "E-mail" (AC 13)
+**C15** - Em `/register`, o primeiro campo do formulário é "Nome completo", `required`, `maxLength` 100, seguido de "E-mail" (AC 13) ✓
 Proof: `npm --prefix src/web run test -- -t "register form asks the full name first"`
 
-**C16** - Enviar o cadastro com "Maria da Silva", `ana@test.local` e `Passw0rd!` faz `POST /api/auth/register` com corpo `{ fullName: "Maria da Silva", email: "ana@test.local", password: "Passw0rd!" }` (AC 14)
+**C16** - Enviar o cadastro com "Maria da Silva", `ana@test.local` e `Passw0rd!` faz `POST /api/auth/register` com corpo `{ fullName: "Maria da Silva", email: "ana@test.local", password: "Passw0rd!" }` (AC 14) ✓
 Proof: `npm --prefix src/web run test -- -t "register sends the full name"`
 
-**C17** - Cadastro que responde problem `400` "E-mail já cadastrado": o alerta mostra o título e os campos continuam com "Maria da Silva" e `ana@test.local` (AC 15)
+**C17** - Cadastro que responde problem `400` "E-mail já cadastrado": o alerta mostra o título e os campos continuam com "Maria da Silva" e `ana@test.local` (AC 15) ✓
 Proof: `npm --prefix src/web run test -- -t "register form states: disabled while pending, then problem title keeps the name and e-mail"`
 
-**C18** - Com sessão `{ email: "ana@test.local", fullName: "Ana Souza" }`, a barra `banner` do topo da área de conteúdo mostra "Ana Souza" em `/organizations` e em `/gaps` (AC 16)
+**C18** - Com sessão `{ email: "ana@test.local", fullName: "Ana Souza" }`, a barra `banner` do topo da área de conteúdo mostra "Ana Souza" em `/organizations` e em `/gaps` (AC 16) ✓
 Proof: `npm --prefix src/web run test -- -t "top bar shows the logged user name"`
 
-**C19** - Com sessão `fullName: null`, a barra do topo mostra `ana@test.local` (AC 17)
+**C19** - Com sessão `fullName: null`, a barra do topo mostra `ana@test.local` (AC 17) ✓
 Proof: `npm --prefix src/web run test -- -t "top bar falls back to the e-mail"`
 
-**C20** - `/login` não tem campo "Nome completo" (AC 18)
+**C20** - `/login` não tem campo "Nome completo" (AC 18) ✓
 Proof: `npm --prefix src/web run test -- -t "login form has no full name"`
 
-**C21** - A suíte da web passa com a sessão vinda de `/api/auth/me` (regressão da door 3: guarda de sessão, login, organizações)
+**C21** - A suíte da web passa com a sessão vinda de `/api/auth/me` (regressão da door 3: guarda de sessão, login, organizações) ✓
 Proof: `npm --prefix src/web run test`
 
 ## Coverage
@@ -121,3 +121,6 @@ Os specs anteriores já respondem: rota Minimal API provada no HTTP com Postgres
 
 - Leitura ≈ 60 KB (Auth, AppDbContext, seed, testes de auth, web auth, AppLayout, helpers de teste) ≈ 15k. Escrita: S1 ≈ 10k, S2 ≈ 5k, S3 ≈ 10k, migration ≈ 5k. Total ≈ 45k, abaixo do budget de 150k - um builder
 - Mechanism: one builder (dentro do budget, sem pergunta)
+- **Boundary:** C1-C14 fechados em `e8cb234`; C15-C21 fechados no commit da web
+- **Settled mid-build:** o usuário pediu de novo, durante o build, o nome no topo da tela - é o S3 (AC 16-17), já coberto. A barra ganhou `aria-label="Usuário logado"` e C18/C19 buscam o `banner` por esse nome: a página de Lacunas tem seu próprio `<header>`, então havia dois `banner`; a afirmação do check não mudou. O login passa só `email` e `password` para não enviar `fullName` vazio
+- **Abandoned:** nada

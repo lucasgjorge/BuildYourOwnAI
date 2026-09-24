@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
-import { useLogout } from '../features/auth/api'
+import { useLogout, useSession } from '../features/auth/api'
 import { useGaps } from '../features/gaps/api'
 import { useOrganizations } from '../features/organizations/api'
 import { CreateOrganizationForm } from '../features/organizations/CreateOrganizationForm'
@@ -15,6 +15,7 @@ export function AppLayout() {
   const organizations = useOrganizations()
   const gaps = useGaps()
   const logout = useLogout()
+  const session = useSession()
   const navigate = useNavigate()
   const [creating, setCreating] = useState(false)
   const openGaps = gaps.data?.length ?? 0
@@ -65,6 +66,10 @@ export function AppLayout() {
         </nav>
       </aside>
       <div className="min-w-0 flex-1">
+        {/* Who is logged in (user-name, AC 16-17); RequireAuth guarantees the session is loaded here. */}
+        <header aria-label="Usuário logado" className="flex justify-end border-b border-line bg-surface px-6 py-2 text-sm text-muted">
+          <span className="truncate font-medium text-ink">{session.data?.fullName ?? session.data?.email}</span>
+        </header>
         <Outlet />
       </div>
     </div>
