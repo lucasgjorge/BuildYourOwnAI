@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+node_modules/
+src/BuildYourOwnAI.Api/wwwroot/
+TestResults/
+*.log
+.env
