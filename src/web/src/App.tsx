@@ -9,6 +9,7 @@ import { HomePage } from './features/home/HomePage'
 import { KnowledgePage, OrganizationLayout } from './features/organizations/OrganizationPage'
 import { OrganizationsPage } from './features/organizations/OrganizationsPage'
 import { AllAssistantsPage } from './features/routing/AllAssistantsPage'
+import { StudyPage } from './features/study/StudyPage'
 import { AppLayout } from './shared/AppLayout'
 
 export function AppRoutes() {
@@ -22,6 +23,7 @@ export function AppRoutes() {
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/organizations/:id" element={<OrganizationLayout />}>
             <Route index element={<ChatPage />} />
+            <Route path="study" element={<StudyPage />} />
             <Route path="knowledge" element={<KnowledgePage />} />
           </Route>
           <Route path="/assistants/:id" element={<AssistantPage />} />

@@ -15,6 +15,8 @@
   --color-route-soft: #e2f1ec;
   --color-danger: #b42318;
   --color-danger-soft: #fdecea;
+  --color-success: #15803d;
+  --color-success-soft: #e7f5ec;
 }
 
 /* One lane per AI of an organization, by position. Outside @theme on purpose: they are only read from

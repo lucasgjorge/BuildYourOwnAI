@@ -31,6 +31,7 @@ export function OrganizationLayout() {
         <h1 className="font-display text-2xl font-bold tracking-tight">{organization.data.name}</h1>
         <nav aria-label="Seções da organização" className="mt-4 flex gap-6">
           <NavLink to={`/organizations/${id}`} end className={tabClass}>Conversa</NavLink>
+          <NavLink to={`/organizations/${id}/study`} className={tabClass}>Estudar</NavLink>
           <NavLink to={`/organizations/${id}/knowledge`} className={tabClass}>Base</NavLink>
         </nav>
       </header>

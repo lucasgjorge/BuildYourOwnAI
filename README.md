@@ -4,7 +4,8 @@ SaaS onde cada usuário constrói as **próprias IAs**. Ele cria uma **organiza�
 (PDF, TXT, MD) e cria nela várias IAs com jeitos diferentes de responder (ex.: RH, Culture, Tech Team).
 No **chat da organização**, a **escolha automática** decide qual IA responde cada pergunta. A resposta
 cita os trechos dos documentos de onde veio (RAG), e clicar num trecho abre a prévia dele ao lado do chat. O que nenhuma IA sabe responder vira uma **Lacuna**: o dono responde
-uma vez e a resposta passa a ser conhecimento da organização.
+uma vez e a resposta passa a ser conhecimento da organização. Na aba **Estudar**, o produto gera perguntas de
+múltipla escolha dos documentos escolhidos e, quando a resposta está errada, mostra a certa com o trecho de origem ao lado.
 
 - Produto e roadmap: [docs/PRD.md](docs/PRD.md)
 - Specs com critérios de aceite, um por feature: [.specs/features/](.specs/features/). Os mais recentes:
@@ -92,6 +93,7 @@ na mesma origem.
 2. Crie uma organização. Você cai na aba **Base**: suba documentos e crie IAs, preenchendo "Quando usar esta IA".
 3. Abra a aba **Conversa** e pergunte. Com "Escolha automática", a pergunta vai sozinha para a IA certa; fixe uma IA em "Para" para perguntar direto a ela. Clique num trecho das fontes para ver a prévia à direita.
 4. Perguntas sem resposta aparecem em **Lacunas**. Responda e a resposta vira documento da organização.
+5. Na aba **Estudar**, marque os documentos, escolha 5, 10 ou 20 perguntas e clique em "Começar". Errou? A certa aparece com o trecho de origem à direita.
 
 ### Build de produção (um processo só)
 
@@ -163,8 +165,10 @@ saem sempre como `application/problem+json`.
 | `POST /api/route/ask` | perguntar com escolha automática entre as IAs de todas as organizações |
 | `GET /api/organizations/{id}/documents/{documentId}/chunks/{index}?around=1` | o trecho citado e seus vizinhos, para a prévia |
 | `GET /api/gaps` · `POST /api/gaps/{id}/answer` · `POST /api/gaps/{id}/dismiss` | lacunas abertas; responder (vira documento) ou dispensar |
+| `POST /api/organizations/{id}/study-sessions` | gera perguntas de múltipla escolha (`questionCount` 5, 10 ou 20; `documentIds` opcional), sem o gabarito |
+| `POST /api/study-sessions/{sessionId}/questions/{questionId}/answer` | corrige uma resposta (`option` 0 a 3) e devolve a certa, a explicação e o trecho de origem |
 
-As três rotas de pergunta somam no mesmo limite de 20 perguntas por minuto por usuário.
+As três rotas de pergunta e a criação de sessão de estudo somam no mesmo limite de 20 chamadas por minuto por usuário.
 
 ## Problemas comuns
 
