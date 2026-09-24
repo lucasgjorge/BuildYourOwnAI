@@ -111,8 +111,9 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
     public async Task Routing_and_gaps_never_log_content()
     {
         var client = await NewUserClientAsync();
-        var (_, assistant) = await NewAssistantAsync(client, "ACME", routingDescription: "respostas curtas");
         string Secret() => "segredo" + Guid.NewGuid().ToString("N");
+        var routingSecret = Secret();
+        var (_, assistant) = await NewAssistantAsync(client, "ACME", routingDescription: $"respostas curtas {routingSecret}");
         var askSecret = Secret();
         var routedSecret = Secret();
         var noMatchSecret = Secret();
@@ -124,6 +125,8 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
         var afterAsk = Factory.Logs.Entries.Count;
         await RouteAsync(client, $"pergunta {routedSecret} {FakeAiTriggers.Route(1)} {FakeAiTriggers.Found}");
         await RouteAsync(client, $"pergunta {noMatchSecret} {FakeAiTriggers.Route("NONE")}");
+        // The router replies with an option it was never given, carrying the fake's output marker.
+        await RouteAsync(client, $"pergunta {Secret()} {FakeAiTriggers.Route("TEXT")}");
         var gaps = await JsonAsync(await client.GetAsync("/api/gaps"));
         var gap = gaps.EnumerateArray().Single(g => g.GetProperty("question").GetString() == unanswered).GetProperty("id").GetGuid();
         var answered = await client.PostAsJsonAsync($"/api/gaps/{gap}/answer", new { answer = $"resposta {gapAnswerSecret}" });
@@ -134,7 +137,7 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
         Assert.Contains(Factory.Logs.Entries.Skip(before).Take(afterAsk - before),
             e => e.Properties.TryGetValue("GapId", out var v) && v?.ToString() == gap.ToString());
         var logged = entries.SelectMany(e => e.Properties.Values.Select(v => v?.ToString() ?? "").Append(e.Message)).ToList();
-        foreach (var secret in new[] { askSecret, routedSecret, noMatchSecret, gapAnswerSecret, FakeAiTriggers.FoundAnswer, FakeRouterClient.OutputMarker })
+        foreach (var secret in new[] { askSecret, routedSecret, noMatchSecret, gapAnswerSecret, routingSecret, FakeAiTriggers.FoundAnswer, FakeRouterClient.OutputMarker })
             Assert.DoesNotContain(logged, text => text.Contains(secret));
     }
 }

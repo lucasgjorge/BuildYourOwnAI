@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using BuildYourOwnAI.Api.Infrastructure.Ai;
 using BuildYourOwnAI.Api.Tests.Infrastructure;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BuildYourOwnAI.Api.Tests.Features;
 
@@ -49,6 +51,7 @@ public sealed class RoutingChoiceTests(ApiFactory factory) : ApiTestBase(factory
         Assert.Contains("Nexora", sent["1"]);
         Assert.Contains(culture, sent["1"]);
         Assert.Contains("RH", sent["2"]);
+        Assert.Contains("Nexora", sent["2"]);
         Assert.Contains(hr, sent["2"]);
         Assert.StartsWith(question + "\n", Factory.Router.PromptContaining(question));
     }
@@ -125,6 +128,24 @@ public sealed class RoutingChoiceTests(ApiFactory factory) : ApiTestBase(factory
             () => client.PostAsJsonAsync($"/api/organizations/{organization}/route/ask", new { question = "como peço férias?" }));
 
         Assert.Equal(kind, body.GetProperty("kind").GetString());
+    }
+
+    // C19 (source-preview): the timeout of the routing client comes from AI:Routing.
+    [Theory]
+    [InlineData(null, 10)]
+    [InlineData("3", 3)]
+    public void Timeout_comes_from_routing_config(string? seconds, int expected)
+    {
+        var settings = new Dictionary<string, string?> { ["AI:OpenRouter:ApiKey"] = "sk-or-test", ["AI:OpenRouter:Model"] = "choice-model-test" };
+        if (seconds is not null) settings["AI:Routing:TimeoutSeconds"] = seconds;
+        var services = new ServiceCollection();
+        services.AddAi(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(OpenRouterRoutingChoice));
+
+        Assert.Equal(TimeSpan.FromSeconds(expected), client.Timeout);
+        Assert.Equal("https://openrouter.ai/api/v1/", client.BaseAddress!.ToString());
     }
 }
 

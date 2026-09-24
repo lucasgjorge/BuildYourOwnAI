@@ -10,9 +10,14 @@ import type { SourceRef } from './Thread'
  */
 export function SourcePreview({ organizationId, source, onClose }: { organizationId: string; source: SourceRef; onClose: () => void }) {
   const chunk = useDocumentChunk(organizationId, source.documentId, source.chunkIndex)
+  const panel = useRef<HTMLDivElement>(null)
   const cited = useRef<HTMLParagraphElement>(null)
 
-  useEffect(() => { cited.current?.scrollIntoView?.({ block: 'center', inline: 'nearest' }) }, [chunk.data])
+  // Centers the cited chunk by scrolling the panel only: scrollIntoView would also move the page sideways (AC 17).
+  useEffect(() => {
+    if (panel.current && cited.current)
+      panel.current.scrollTop = cited.current.offsetTop - panel.current.clientHeight / 2
+  }, [chunk.data])
 
   return (
     <aside
@@ -34,7 +39,7 @@ export function SourcePreview({ organizationId, source, onClose }: { organizatio
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-5">
+      <div ref={panel} className="relative flex-1 overflow-y-auto px-5 py-5">
         {chunk.isPending && <p className="text-sm text-muted">Carregando trecho…</p>}
         {chunk.isError && <Alert>{errorTitle(chunk.error)}</Alert>}
         {chunk.data && (

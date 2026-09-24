@@ -38,7 +38,7 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C8** - Nada enviado ao `IJevChoice` contém o marcador das instruções nem o do documento (AC 8) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Router_never_receives_instructions_or_documents"`
 
-**C9** - Nenhum log contém a pergunta nem as respostas depois de Jev `answered` e `noMatch` (AC 9) ✓
+**C9** - Nenhum log contém a pergunta, a descrição "Quando usar" enviada nem a resposta do roteador (incluindo uma opção que ele não recebeu) depois de roteamento `answered`, `noMatch` e escolha inválida (AC 9) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~ObservabilityTests.Jev_and_gaps_never_log_content"`
 
 **C10** - Sem `AI:OpenRouter:ApiKey`, o Jev responde o fallback `clarify` (door 1) ✓
@@ -86,3 +86,4 @@ Evidence:
 - **Boundary:** C1-C10 fechados no commit da Api (este)
 - **Settled mid-build:** o usuário apontou o app `C:\reserve\aria` como referência do contrato do `jev-latest`
 - **Abandoned:** o fake do roteador dava ao escolhido a confiança e dividia o resto igualmente; com `LOW1` e duas outras opções, as outras ficavam mais prováveis que a escolhida. Agora o escolhido é sempre o mais provável, como na primitiva real
+- **Round 2 fix (after Verifier FAIL at `fe854c9`):** C9 passa a cobrir as descrições e a resposta do roteador (marcadores na `routingDescription` e na escolha inválida); C1 confere a organização também na opção "2". As provas citam os nomes antigos dos testes; a renomeação (source-preview) está mapeada em `verification.md`

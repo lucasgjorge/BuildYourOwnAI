@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/source-preview/plan.md`
 
-18 checks in 3 slices · 2 one-way doors · 0 open
+19 checks in 3 slices · 2 one-way doors · 0 open
 
 Comandos de prova:
 
@@ -68,11 +68,16 @@ Proof: `bash -c "! (git grep -n -i jev -- src docs README.md AGENTS.md .claude '
 
 ### S3 - Layout sem rolagem lateral · ~2 files · ~10 KB · ~3k
 
-**C17** - O contêiner raiz da área logada tem `overflow-x-clip`, e a thread rola só na vertical: `scrollIntoView` não é chamado e `window.scrollTo` recebe só `top` (AC 17) ✓
+**C17** - Com uma resposta encontrada e a prévia aberta, o contêiner raiz da área logada tem `overflow-x-clip`, `scrollIntoView` não é chamado (nem pela thread, nem pela prévia) e `window.scrollTo` recebe só `top` (AC 17) ✓
 Proof: `npm --prefix src/web run test -- -t "chat never scrolls sideways"`
 
 **C18** - Os testes de web existentes (chat, organizações, lacunas, página inicial, estilos, auth) passam com os textos novos (regressão de S2) ✓
-Proof: `npm --prefix src/web run test -- -t "chat sends to organization routing|asking an alternative appends|pinned assistant is asked directly|nav shows open gap count|home explains how it works|styles keep focus visible"`
+Proof: `npm --prefix src/web run test -- -t "chat sends to organization routing|asking an alternative appends|pinned assistant is asked directly|organization page lists documents and assistants|login form states|nav shows open gap count|home explains how it works|styles keep focus visible"`
+
+### Round 2 (after Verifier FAIL at `fe854c9`)
+
+**C19** - Sem `AI:Routing:TimeoutSeconds`, o cliente da escolha automática tem timeout de 10 s; com `3`, tem 3 s; o endereço é `https://openrouter.ai/api/v1/` (AC 13) ✓
+Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~RoutingChoiceTests.Timeout_comes_from_routing_config"`
 
 ## Coverage
 
@@ -88,7 +93,8 @@ Proof: `npm --prefix src/web run test -- -t "chat sends to organization routing|
 | textos da escolha automática (4) | seletor C9 · marca na resposta C9 · carregando C9 · barra lateral C9 | - |
 | lugares sem "Jev" (5) | `src/` C10 · `docs/` C10 · `README.md` C10 · `AGENTS.md` C10 · `.claude/` C10 | - |
 | doors (2) | 1 C1, C4 · 2 C6, C7, C10 | - |
-| startup config: `AI:Routing` (2 assemblies) | `Program.cs`/`AddAi` C8 · `ApiFactory` (padrão) C6 | - |
+| startup config: `AI:Routing` (2 assemblies) | `Program.cs`/`AddAi` C8, C19 · `ApiFactory` (padrão) C6 | - |
+| `AI:Routing` (2 chaves) | `ConfidenceThreshold` C8 · `TimeoutSeconds` C19 | - |
 
 ## Test policy
 
@@ -113,3 +119,4 @@ Os specs anteriores já respondem. Sem linhas novas.
 - **Boundary:** C1-C18 fechados no commit da feature (este)
 - **Settled mid-build:** o usuário confirmou "à direita, como uma prévia". C16 corrigido antes de a prova passar: o check pedia `lg:static`, mas uma coluna ao lado de uma página que rola precisa de `lg:sticky` para continuar visível; a obrigação (sobrepõe no estreito, coluna no largo) é a mesma, só a classe estava errada. A prévia existe só no chat da organização: na tela "Todas as IAs" a resposta não traz o id da organização, e a leitura de trechos é por organização (as fontes aparecem agrupadas, sem botão)
 - **Abandoned:** substituições encadeadas no script de renomeação da Api (uma troca anterior mudava o alvo da seguinte); o script ficou idempotente e as trocas sem espaços à esquerda. O teste C9 declarava o handler com atraso depois dos padrões e o MSW usava o padrão; o handler com atraso vai primeiro
+- **Round 2 fix (after Verifier FAIL at `fe854c9`):** a prévia chamava `scrollIntoView` para centralizar o trecho, o que podia rolar a página de lado; agora rola só o próprio painel, e C17 cobre uma resposta encontrada. C19 adicionado para o timeout de `AI:Routing`. O seletor de C18 passa a incluir os testes de organização e de login

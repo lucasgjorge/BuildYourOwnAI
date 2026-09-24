@@ -192,12 +192,14 @@ describe('automatic choice', () => {
     Element.prototype.scrollIntoView = scrollIntoView
     const scrollTo = vi.fn()
     window.scrollTo = scrollTo as unknown as typeof window.scrollTo
-    const { handlers } = api({ found: false })
+    // A found answer: the preview opens and centers its chunk, the case where sideways scroll used to come back.
+    const { handlers } = api()
     server.use(...handlers)
     const { user } = renderApp('/organizations/o1')
 
     await ask(user)
     await screen.findByText('Pelo portal.')
+    expect(await within(await screen.findByRole('complementary', { name: 'Prévia do trecho' })).findByText('conteúdo do trecho 2')).toBeInTheDocument()
 
     expect(screen.getByTestId('app-shell').className.split(/\s+/)).toContain('overflow-x-clip')
     expect(scrollIntoView).not.toHaveBeenCalled()
