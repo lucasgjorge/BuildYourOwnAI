@@ -54,6 +54,19 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 | doors (2) | 1 C6, C7, C10 · 2 C1, C2, C4 | - |
 | startup config: `IJevChoice` (2 assemblies) | `Program.cs` via `AddAi` C10 · `ApiFactory` substitui pelo fake C1 | - |
 
+## Test policy
+
+O rag-mvp e o jev-gaps já respondem para os handlers (prova na fronteira HTTP). Uma linha nova, para o cliente do provedor:
+
+| Code | Required proofs | Coverage expectation |
+| --- | --- | --- |
+| Cliente HTTP de provedor externo (`OpenRouterJevChoice`) | um no próprio nível, com `HttpMessageHandler` stub | forma do request (rota, cabeçalho, corpo), leitura da resposta, cada falha (não-2xx, resposta sem a chave) |
+
+Evidence:
+
+- `OpenRouterJevChoice`: monta o corpo, decide sucesso/falha por status e pela chave `principal` -> decide, provado em C6 e C7
+- análogo no repo: nenhum (primeiro cliente HTTP feito à mão; OpenAI usa o SDK)
+
 ## Swept
 
 - validation: C5 (chave fora das enviadas)
