@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/jev-gaps/plan.md`
 
-62 checks in 4 slices · 7 one-way doors · 2 open, of which 0 block (2 block go-live)
+63 checks in 4 slices · 7 one-way doors · 2 open, of which 0 block (2 block go-live)
 
 Comandos de prova:
 
@@ -172,8 +172,8 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C49** - Apagar uma IA com lacuna aberta responde `204` e a lacuna continua em `GET /api/gaps` com `assistant = null` e a mesma `organization` (AC 45) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Deleting_assistant_keeps_its_gaps"`
 
-**C50** - Depois de um ask com `found=false`, um Jev `answered`, um Jev `noMatch` e uma resposta de lacuna, cada um com marcadores únicos na pergunta, na resposta e na saída do roteador, nenhum log capturado contém qualquer marcador; a criação de lacuna gera um log com `GapId` (AC 46, observability) ✓
-Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~CrossCuttingTests.Jev_and_gaps_never_log_content"`
+**C50** - Depois de um ask com `found=false`, um Jev `answered`, um Jev `noMatch` e uma resposta de lacuna, cada um com marcadores únicos na pergunta, na resposta e na saída do roteador, nenhum log capturado contém qualquer marcador; o ask sem resposta gera, antes de a lacuna ser respondida, um log com `GapId` igual ao id da lacuna criada (AC 46, observability) ✓
+Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~ObservabilityTests.Jev_and_gaps_never_log_content"`
 
 **C51** - Menu: com `GET /api/gaps` devolvendo 2 lacunas mostra "Lacunas (2)"; com `[]` mostra "Lacunas" sem número (AC 47) ✓
 Proof: `npm --prefix src/web run test -- -t "nav shows open gap count"`
@@ -189,6 +189,7 @@ Proof: `npm --prefix src/web run test -- -t "gaps dismiss confirms"`
 
 **C55** - Tela `Lacunas`: mostra "Carregando lacunas…" enquanto a lista não responde; problem details na lista e na resposta mostram o `title` (AC 51) ✓
 Proof: `npm --prefix src/web run test -- -t "gaps loading and error states"`
+Proof: `npm --prefix src/web run test -- -t "gaps list error shows problem title"`
 
 ### S4 - Telas de organização · ~6 files · ~35 KB · ~9k
 
@@ -206,6 +207,11 @@ Proof: `npm --prefix src/web run test -- -t "organization page empty, loading an
 
 **C60** - Tela `/assistants/{id}` mostra o nome da organização com link para ela, a caixa de pergunta, e não mostra upload de documento; a resposta mostra as fontes (Observable `IA`) ✓
 Proof: `npm --prefix src/web run test -- -t "assistant page asks and links to organization"`
+
+### Round 2 (after Verifier FAIL at `73b9262`)
+
+**C63** - Responder uma lacuna grava `gaps.document_id` = `documentId` devolvido; apagar esse documento responde `204` e a lacuna continua `answered` com `document_id` nulo (door 7, Relations `Gap |o--o| Document` set null) ✓
+Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Answer_links_document_and_deleting_it_unlinks_gap"`
 
 ## Coverage
 
@@ -244,7 +250,8 @@ Proof: `npm --prefix src/web run test -- -t "assistant page asks and links to or
 | rotas protegidas sem sessão (14) | C61, table-driven sobre as 14 rotas desta feature | - |
 | telas (5) | `Organizações` C56, C58 · `Organização` C57, C59 · `IA` C60 · `Jev` C30-C34 · `Lacunas` C51-C55 | - |
 | estados por tela do Observable (13) | `Organizações` vazio C56 · `Organizações` apagar confirma C58 · `Organização` vazio C59 · `Organização` carregando C59 · `Organização` 404 C59 · `Jev` answered C30 · `Jev` clarify C31 · `Jev` noMatch C32 · `Jev` vazio C33 · `Jev` carregando/erro C34 · `Lacunas` vazio C52 · `Lacunas` carregando/erro C55 · `Lacunas` dispensar confirma C54 | - |
-| doors (7) | 1 C10, C11, C16, C17 · 2 C5, C48, C18 · 3 C6, C17 · 4 C29, C18, C27 · 5 C19, C23 · 6 C35, C38 · 7 C41, C42 | - |
+| doors (7) | 1 C10, C11, C16, C17 · 2 C5, C48, C18 · 3 C6, C17 · 4 C29, C18, C27 · 5 C19, C23 · 6 C35, C38 · 7 C41, C42, C63 | - |
+| vínculo `Gap` -> `Document` (2) | gravado ao responder C63 · `SET NULL` ao apagar o documento C63 | - |
 | entidades (5) | `Organization` C1, C12 · `Assistant` C6, C49 · `Document` C13, C41 · `Chunk` C12, C16 · `Gap` C35, C40 | - |
 | startup config: cliente `router` keyed (2 assemblies) | `Program.cs` via `AddAi` C29 · `ApiFactory` substitui o keyed C18 | - |
 
@@ -293,3 +300,4 @@ Cost: 1 classe de teste nova de migração. As linhas **não** vão para as guid
 - **Boundary:** C1-C29, C35-C50, C61, C62 fechados em `2580098` (Api); C30-C34, C51-C60 fechados no commit do web (este)
 - **Settled mid-build:** nenhum esclarecimento do usuário durante o build. Nenhuma door nova
 - **Abandoned:** heredocs de bash com `"""` (raw string do C#) quebravam o shell do harness; edições feitas via Write/script. Texto de ajuda dentro do `<label>` de "Quando usar esta IA" mudava o nome acessível do campo; virou `aria-describedby`
+- **Round 2 fix (after Verifier FAIL at `73b9262`):** C50 com o seletor da classe real (`ObservabilityTests`) e asserção presa ao log de criação da lacuna; C63 adicionado para o vínculo `Gap` -> `Document` (door 7); segunda prova de C55 para o erro da lista. Ressalvas do architecture-guardian aplicadas: `AskPipeline`, `DocumentIngestion` e `GapRecorder` saíram dos slices para `Common/` (usados por 2+ slices); tipos do web voltaram para `features/<area>/types.ts`. Não aplicada: `Results<...>` tipado nos handlers de Gaps/Jev - as falhas vêm de `AiProviderCall`/`DocumentIngestion` como `IResult`, e tipar exigiria mudar esses helpers compartilhados; forma do erro já é problem details (C39 do rag-mvp)

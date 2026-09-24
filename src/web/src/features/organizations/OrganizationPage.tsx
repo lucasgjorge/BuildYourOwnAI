@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { errorTitle } from '../../shared/api/client'
-import type { OrganizationAssistant } from '../../shared/api/types'
 import { useCreateAssistant, useDeleteAssistant } from '../assistants/api'
 import { useDeleteDocument, useDocuments, useOrganization, useUploadDocument } from './api'
+import type { OrganizationAssistant } from './types'
 
 export function OrganizationPage() {
   const { id = '' } = useParams()

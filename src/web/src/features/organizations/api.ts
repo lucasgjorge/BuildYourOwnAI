@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, postJson } from '../../shared/api/client'
-import type { DocumentItem, OrganizationDetail, OrganizationSummary } from '../../shared/api/types'
+import type { DocumentItem, OrganizationDetail, OrganizationSummary } from './types'
 
 export const organizationKeys = {
   all: ['organizations'] as const,

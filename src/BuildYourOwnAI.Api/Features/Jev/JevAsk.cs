@@ -1,8 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using BuildYourOwnAI.Api.Features.Ask;
-using BuildYourOwnAI.Api.Features.Gaps;
 using BuildYourOwnAI.Api.Infrastructure;
 using BuildYourOwnAI.Api.Infrastructure.Ai;
 using BuildYourOwnAI.Api.Infrastructure.Data;
@@ -27,7 +25,7 @@ public static class JevAsk
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AssistantRef? Assistant = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Answer = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Found = null,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<AskAssistant.Source>? Sources = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<AskPipeline.Source>? Sources = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<AssistantRef>? Alternatives = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<AssistantRef>? Candidates = null);
 
@@ -42,7 +40,7 @@ public static class JevAsk
     {
         app.MapPost("/api/jev/ask", Handle)
             .RequireAuthorization()
-            .RequireRateLimiting(AskAssistant.RateLimitPolicy)
+            .RequireRateLimiting(AskPipeline.RateLimitPolicy)
             .WithTags("Jev");
         return app;
     }
@@ -59,7 +57,7 @@ public static class JevAsk
     {
         var logger = loggerFactory.CreateLogger(typeof(JevAsk));
         var question = request.Question?.Trim() ?? "";
-        if (AskAssistant.InvalidQuestion(question) is { } invalid)
+        if (AskPipeline.InvalidQuestion(question) is { } invalid)
             return invalid;
 
         var eligible = await db.Assistants
@@ -81,7 +79,7 @@ public static class JevAsk
             if (!decision.Confident)
                 return Outcome(logger, eligible.Count, new Response("clarify", Candidates: Refs(eligible, MaxOptions)));
 
-            await RecordGap.RecordAsync(db, currentUser.Id!, null, null, question, logger, ct);
+            await GapRecorder.RecordAsync(db, currentUser.Id!, null, null, question, logger, ct);
             return Outcome(logger, eligible.Count, new Response("noMatch"));
         }
 
@@ -90,14 +88,14 @@ public static class JevAsk
         if (!decision.Confident)
             return Outcome(logger, eligible.Count, new Response("clarify", Candidates: [chosen.Ref, .. Refs(others, MaxOptions - 1)]));
 
-        var (answer, failure) = await AskAssistant.AnswerAsync(
-            db, new AskAssistant.Target(chosen.Id, chosen.OrganizationId, chosen.Name, chosen.Instructions),
+        var (answer, failure) = await AskPipeline.AnswerAsync(
+            db, new AskPipeline.Target(chosen.Id, chosen.OrganizationId, chosen.Name, chosen.Instructions),
             question, currentUser.Id!, embeddings, chat, logger, ct);
         if (failure is not null)
             return failure;
 
         return Outcome(logger, eligible.Count, new Response(
-            "answered", chosen.Ref, answer!.Answer, answer.Found, answer.Sources, Alternatives: Refs(others, MaxOptions)));
+            "answered", chosen.Ref, answer!.Text, answer.Found, answer.Sources, Alternatives: Refs(others, MaxOptions)));
     }
 
     private static List<AssistantRef> Refs(IEnumerable<Eligible> eligible, int max) => eligible.Take(max).Select(e => e.Ref).ToList();

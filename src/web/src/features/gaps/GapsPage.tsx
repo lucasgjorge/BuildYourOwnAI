@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { errorTitle } from '../../shared/api/client'
-import type { Gap } from '../../shared/api/types'
 import { useOrganizations } from '../organizations/api'
 import { useAnswerGap, useDismissGap, useGaps } from './api'
+import type { Gap } from './types'
 
 export function GapsPage() {
   const gaps = useGaps()

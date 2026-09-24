@@ -2,10 +2,10 @@ using System.Text.RegularExpressions;
 using BuildYourOwnAI.Api.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace BuildYourOwnAI.Api.Features.Gaps;
+namespace BuildYourOwnAI.Api.Common;
 
 /// <summary>Opens a gap for an unanswered question, or counts one more ask on the open gap it matches.</summary>
-public static partial class RecordGap
+public static partial class GapRecorder
 {
     public static string Normalize(string question) => Whitespace().Replace(question.Trim().ToLowerInvariant(), " ");
 

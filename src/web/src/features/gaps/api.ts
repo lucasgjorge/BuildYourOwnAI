@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, postJson } from '../../shared/api/client'
-import type { Gap } from '../../shared/api/types'
 import { organizationKeys } from '../organizations/api'
+import type { Gap } from './types'
 
 export const gapKeys = { all: ['gaps'] as const }
 

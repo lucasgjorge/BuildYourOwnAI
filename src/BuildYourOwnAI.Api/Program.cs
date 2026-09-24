@@ -37,7 +37,7 @@ builder.Services.ConfigureApplicationCookie(cookie =>
 
 builder.Services.AddRateLimiter(limiter =>
 {
-    limiter.AddPolicy(AskAssistant.RateLimitPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
+    limiter.AddPolicy(AskPipeline.RateLimitPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromSeconds(60), QueueLimit = 0 }));
     limiter.OnRejected = async (context, _) =>

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, postJson } from '../../shared/api/client'
-import type { AskResponse, Assistant, CreateAssistantRequest } from '../../shared/api/types'
 import { organizationKeys } from '../organizations/api'
+import type { Assistant, CreateAssistantRequest } from './types'
+import type { AskResponse } from '../../shared/api/types'
 
 const keys = {
   one: (id: string) => ['assistants', id] as const,

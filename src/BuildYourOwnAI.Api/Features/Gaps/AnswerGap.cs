@@ -1,5 +1,4 @@
 using System.Text;
-using BuildYourOwnAI.Api.Features.Documents;
 using BuildYourOwnAI.Api.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -53,7 +52,7 @@ public static class AnswerGap
         var question = gap.Question;
         var fileName = $"Lacuna - {(question.Length <= FileNameQuestionLength ? question : question[..FileNameQuestionLength])}.md";
         var content = Encoding.UTF8.GetBytes($"# Pergunta\n{question}\n\n# Resposta\n{answer}\n");
-        var (document, failure) = await UploadDocument.PrepareAsync(db, embeddings, organizationId.Value, fileName, content, logger, ct);
+        var (document, failure) = await DocumentIngestion.PrepareAsync(db, embeddings, organizationId.Value, fileName, content, logger, ct);
         if (failure is not null)
             return failure;
 
@@ -63,9 +62,9 @@ public static class AnswerGap
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (UploadDocument.IsDuplicate(ex))
+        catch (DbUpdateException ex) when (DocumentIngestion.IsDuplicate(ex))
         {
-            return UploadDocument.AlreadyAttached();
+            return DocumentIngestion.AlreadyAttached();
         }
 
         // Only an open gap closes; a concurrent answer or dismiss that got there first wins.

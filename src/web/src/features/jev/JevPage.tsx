@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError, errorTitle } from '../../shared/api/client'
-import type { AskResponse, AssistantRef } from '../../shared/api/types'
 import { AnswerView } from '../assistants/AnswerView'
 import { useAsk } from '../assistants/api'
 import { useJev } from './api'
+import type { AssistantRef } from './types'
+import type { AskResponse } from '../../shared/api/types'
 
 type Answered = { assistant: AssistantRef; answer: AskResponse; others: AssistantRef[] }
 

@@ -342,4 +342,21 @@ public sealed class GapsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(JsonValueKind.Null, gap.GetProperty("assistant").ValueKind);
         Assert.Equal(organization, gap.GetProperty("organization").GetProperty("id").GetGuid());
     }
+
+    // C63
+    [Fact]
+    public async Task Answer_links_document_and_deleting_it_unlinks_gap()
+    {
+        var client = await NewUserClientAsync();
+        var (organization, assistant) = await NewAssistantAsync(client);
+        var (_, gap) = await OpenGapAsync(client, assistant, $"pergunta {Marker()}");
+        var documentId = (await JsonAsync(await AnswerAsync(client, gap, $"resposta {Marker()}"))).GetProperty("documentId").GetGuid();
+        Assert.Equal(1, await ScalarAsync("select count(*) from gaps where id = @g and document_id = @d", ("g", gap), ("d", documentId)));
+
+        var deleted = await client.DeleteAsync($"/api/organizations/{organization}/documents/{documentId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        Assert.Equal(1, await ScalarAsync(
+            "select count(*) from gaps where id = @g and document_id is null and status = 'answered'", ("g", gap)));
+    }
 }

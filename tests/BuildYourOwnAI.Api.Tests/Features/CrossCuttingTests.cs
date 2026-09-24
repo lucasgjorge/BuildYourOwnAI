@@ -121,6 +121,7 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
 
         var unanswered = $"pergunta {askSecret} {FakeAiTriggers.NotFound}";
         await AskAsync(client, assistant, unanswered);
+        var afterAsk = Factory.Logs.Entries.Count;
         await JevAsync(client, $"pergunta {routedSecret} {FakeAiTriggers.Route(1)} {FakeAiTriggers.Found}");
         await JevAsync(client, $"pergunta {noMatchSecret} {FakeAiTriggers.Route("NONE")}");
         var gaps = await JsonAsync(await client.GetAsync("/api/gaps"));
@@ -129,7 +130,9 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
         Assert.Equal(HttpStatusCode.OK, answered.StatusCode);
 
         var entries = Factory.Logs.Entries.Skip(before).ToList();
-        Assert.Contains(entries, e => e.Properties.ContainsKey("GapId"));
+        // The gap-creation log itself: written by the unanswered ask, before the gap is answered.
+        Assert.Contains(Factory.Logs.Entries.Skip(before).Take(afterAsk - before),
+            e => e.Properties.TryGetValue("GapId", out var v) && v?.ToString() == gap.ToString());
         var logged = entries.SelectMany(e => e.Properties.Values.Select(v => v?.ToString() ?? "").Append(e.Message)).ToList();
         foreach (var secret in new[] { askSecret, routedSecret, noMatchSecret, gapAnswerSecret, FakeAiTriggers.FoundAnswer, FakeRouterClient.OutputMarker })
             Assert.DoesNotContain(logged, text => text.Contains(secret));
