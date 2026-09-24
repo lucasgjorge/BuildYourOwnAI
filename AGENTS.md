@@ -1,7 +1,7 @@
 # BuildYourOwnAI
 
 SaaS onde o usuário constrói as próprias IAs: cria uma organização, anexa documentos, cria IAs
-nela e conversa no chat da organização, onde o Jev escolhe qual IA responde (RAG). Perguntas sem
+nela e conversa no chat da organização, onde a escolha automática decide qual IA responde (RAG). Perguntas sem
 resposta viram Lacunas. Produto: [docs/PRD.md](docs/PRD.md). Decisões de projeto: [.specs/STATE.md](.specs/STATE.md).
 
 ## tlc-spec-lean
@@ -36,7 +36,7 @@ cd src/web && npm install && npm run dev             # Vite em localhost:5173, p
 cd src/web && npm test
 dotnet ef migrations add <Name> --project src/BuildYourOwnAI.Api
 dotnet user-secrets set "AI:OpenAI:ApiKey" "<key>" --project src/BuildYourOwnAI.Api
-dotnet user-secrets set "AI:OpenRouter:ApiKey" "<key>" --project src/BuildYourOwnAI.Api   # roteador do Jev
+dotnet user-secrets set "AI:OpenRouter:ApiKey" "<key>" --project src/BuildYourOwnAI.Api   # escolha automática da IA
 dotnet user-secrets set "AI:OpenRouter:Model" "<model>" --project src/BuildYourOwnAI.Api
 ```
 

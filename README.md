@@ -2,15 +2,14 @@
 
 SaaS onde cada usuário constrói as **próprias IAs**. Ele cria uma **organização**, sobe os documentos
 (PDF, TXT, MD) e cria nela várias IAs com jeitos diferentes de responder (ex.: RH, Culture, Tech Team).
-No **chat da organização**, o **Jev** escolhe qual IA responde cada pergunta. A resposta cita os
-documentos de onde veio (RAG). O que nenhuma IA sabe responder vira uma **Lacuna**: o dono responde
+No **chat da organização**, a **escolha automática** decide qual IA responde cada pergunta. A resposta
+cita os trechos dos documentos de onde veio (RAG), e clicar num trecho abre a prévia dele ao lado do chat. O que nenhuma IA sabe responder vira uma **Lacuna**: o dono responde
 uma vez e a resposta passa a ser conhecimento da organização.
 
 - Produto e roadmap: [docs/PRD.md](docs/PRD.md)
-- Specs com critérios de aceite:
-  - [.specs/features/rag-mvp/plan.md](.specs/features/rag-mvp/plan.md): contas, documentos, perguntas
-  - [.specs/features/jev-gaps/plan.md](.specs/features/jev-gaps/plan.md): organizações, Jev e Lacunas
+- Specs com critérios de aceite, um por feature: [.specs/features/](.specs/features/). Os mais recentes:
   - [.specs/features/org-chat/plan.md](.specs/features/org-chat/plan.md): chat da organização e página inicial
+  - [.specs/features/source-preview/plan.md](.specs/features/source-preview/plan.md): prévia do trecho e escolha automática
 - Decisões de arquitetura: [.specs/STATE.md](.specs/STATE.md)
 - Padrões de código (e o agente que os revisa): [AGENTS.md](AGENTS.md), [.claude/agents/architecture-guardian.md](.claude/agents/architecture-guardian.md)
 
@@ -22,7 +21,7 @@ uma vez e a resposta passa a ser conhecimento da organização.
 | Web | React 19 + TypeScript + Vite, TanStack Query, Tailwind (`src/web`) |
 | Banco | Postgres 17 + pgvector (relacional e vetorial no mesmo banco) |
 | Auth | ASP.NET Core Identity, cookie de sessão HttpOnly na mesma origem |
-| IA | OpenAI (`text-embedding-3-small` + `gpt-4.1-mini`) via `Microsoft.Extensions.AI`; roteador do Jev = `jev-latest` (primitiva "choice" da TypeSafe) via OpenRouter, atrás de `IJevChoice` |
+| IA | OpenAI (`text-embedding-3-small` + `gpt-4.1-mini`) via `Microsoft.Extensions.AI`; escolha automática da IA = primitiva "choice" da TypeSafe via OpenRouter (modelo `jev-latest`), atrás de `IRoutingChoice` |
 
 ## Pré-requisitos
 
@@ -30,7 +29,7 @@ uma vez e a resposta passa a ser conhecimento da organização.
 - [Node.js 22+](https://nodejs.org/)
 - [Docker](https://www.docker.com/) (Postgres local e testes de integração)
 - Uma chave da API da OpenAI (sem ela o app sobe, mas upload e perguntas respondem `502`)
-- Opcional: uma chave da OpenRouter para o Jev (sem ela o Jev sempre pergunta ao usuário qual IA deve responder)
+- Opcional: uma chave da OpenRouter para a escolha automática (sem ela o chat sempre pergunta ao usuário qual IA deve responder)
 
 ## Rodando localmente
 
@@ -47,7 +46,7 @@ são aplicadas automaticamente quando a API inicia em `Development`.
 
 ```bash
 dotnet user-secrets set "AI:OpenAI:ApiKey" "sk-..." --project src/BuildYourOwnAI.Api
-# Jev (opcional): o nome nu do modelo, sem o prefixo "typesafe/"
+# Escolha automática (opcional): o nome nu do modelo, sem o prefixo "typesafe/"
 dotnet user-secrets set "AI:OpenRouter:ApiKey" "sk-or-..." --project src/BuildYourOwnAI.Api
 dotnet user-secrets set "AI:OpenRouter:Model" "jev-latest" --project src/BuildYourOwnAI.Api
 ```
@@ -91,7 +90,7 @@ na mesma origem.
 
 1. A página inicial (`/`) explica o produto. Crie uma conta.
 2. Crie uma organização. Você cai na aba **Base**: suba documentos e crie IAs, preenchendo "Quando usar esta IA".
-3. Abra a aba **Conversa** e pergunte. Com "Jev decide", o Jev escolhe a IA; fixe uma IA em "Para" para perguntar direto a ela.
+3. Abra a aba **Conversa** e pergunte. Com "Escolha automática", a pergunta vai sozinha para a IA certa; fixe uma IA em "Para" para perguntar direto a ela. Clique num trecho das fontes para ver a prévia à direita.
 4. Perguntas sem resposta aparecem em **Lacunas**. Responda e a resposta vira documento da organização.
 
 ### Build de produção (um processo só)
@@ -129,7 +128,7 @@ Para rodar um teste só: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "F
 
 ```bash
 npm --prefix src/web run test
-npm --prefix src/web run test -- -t "chat sends to organization jev"   # um teste só
+npm --prefix src/web run test -- -t "chat sends to organization routing"   # um teste só
 ```
 
 ## Estrutura
@@ -140,7 +139,7 @@ src/BuildYourOwnAI.Api/
   Common/                        pipeline de pergunta, ingestão, lacunas, chunker, erros compartilhados
   Infrastructure/                DbContext, migrations, usuário atual, registro da IA
 src/web/src/
-  features/<area>/               páginas, hooks, tipos e testes por área (home, chat, organizations, jev, gaps, auth)
+  features/<area>/               páginas, hooks, tipos e testes por área (home, chat, organizations, routing, gaps, auth)
   shared/                        layout com a barra lateral, componentes de UI, cores das IAs
   shared/api/client.ts           único cliente HTTP (problem details → ApiError)
   index.css                      tokens de cor e tipografia (Tailwind @theme)
@@ -160,8 +159,9 @@ saem sempre como `application/problem+json`.
 | `POST/GET /api/organizations/{id}/documents` · `DELETE .../documents/{documentId}` | anexar (até 10 MB, PDF/TXT/MD), listar e apagar documentos da organização |
 | `POST /api/assistants` · `GET/DELETE /api/assistants/{id}` | criar (com `organizationId` e `routingDescription`), ver e apagar IAs |
 | `POST /api/assistants/{id}/ask` | perguntar direto a uma IA; devolve `answer`, `found` e `sources` |
-| `POST /api/organizations/{id}/jev/ask` | perguntar ao Jev da organização; `kind` = `answered`, `clarify` ou `noMatch` |
-| `POST /api/jev/ask` | perguntar ao Jev global (IAs de todas as organizações) |
+| `POST /api/organizations/{id}/route/ask` | perguntar com escolha automática entre as IAs da organização; `kind` = `answered`, `clarify` ou `noMatch` |
+| `POST /api/route/ask` | perguntar com escolha automática entre as IAs de todas as organizações |
+| `GET /api/organizations/{id}/documents/{documentId}/chunks/{index}?around=1` | o trecho citado e seus vizinhos, para a prévia |
 | `GET /api/gaps` · `POST /api/gaps/{id}/answer` · `POST /api/gaps/{id}/dismiss` | lacunas abertas; responder (vira documento) ou dispensar |
 
 As três rotas de pergunta somam no mesmo limite de 20 perguntas por minuto por usuário.
@@ -171,8 +171,8 @@ As três rotas de pergunta somam no mesmo limite de 20 perguntas por minuto por 
 | Sintoma | Causa / solução |
 | --- | --- |
 | Upload ou pergunta respondem `502` | Chave da OpenAI ausente ou inválida (passo 2) |
-| O Jev sempre pergunta "Qual destas IAs deve responder?" com as IAs em ordem alfabética | A chamada ao Jev falhou: falta `AI:OpenRouter:*`, a chave é inválida ou o modelo não é `jev-latest` (o log mostra `Jev router call failed`). Em ordem de probabilidade, é só confiança abaixo de `AI:Jev:ConfidenceThreshold` (0.6) |
-| O Jev responde que nenhuma IA está disponível (`422`) | Nenhuma IA da organização tem "Quando usar esta IA" preenchido |
+| O chat sempre pergunta "Qual destas IAs deve responder?" com as IAs em ordem alfabética | A escolha automática falhou: falta `AI:OpenRouter:*`, a chave é inválida ou o modelo não é `jev-latest` (o log mostra `Routing call failed`). Em ordem de probabilidade, é só confiança abaixo de `AI:Routing:ConfidenceThreshold` (0.6) |
+| O chat responde que nenhuma IA está disponível (`422`) | Nenhuma IA da organização tem "Quando usar esta IA" preenchido |
 | `DockerUnavailableException` nos testes | Docker parado, ou falta o `DOCKER_HOST` no Windows (veja Testes). O `docker compose` funciona sem ele |
 | A API não conecta no banco | `docker compose up -d` não rodou, ou a porta 5432 está ocupada por outro Postgres |
 | Upload responde `422` | O arquivo não tem texto extraível (por exemplo, PDF escaneado; OCR está fora da etapa 1) |

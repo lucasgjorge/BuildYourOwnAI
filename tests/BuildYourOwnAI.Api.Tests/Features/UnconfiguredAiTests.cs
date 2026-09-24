@@ -37,7 +37,7 @@ public sealed class UnconfiguredAiTests(ApiFactory factory) : ApiTestBase(factor
 
     // C29
     [Fact]
-    public async Task Jev_without_router_key_falls_back_to_clarify()
+    public async Task Routing_without_key_falls_back_to_clarify()
     {
         using var app = Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.AddAi(new ConfigurationBuilder().Build())));
@@ -47,7 +47,7 @@ public sealed class UnconfiguredAiTests(ApiFactory factory) : ApiTestBase(factor
         (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
         var assistant = await CreateAssistantInAsync(client, await CreateOrganizationAsync(client), "Direto", routingDescription: "respostas curtas");
 
-        var response = await JevAsync(client, "qual o horario?");
+        var response = await RouteAsync(client, "qual o horario?");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await JsonAsync(response);

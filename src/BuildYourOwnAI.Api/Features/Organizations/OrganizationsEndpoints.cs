@@ -16,6 +16,7 @@ public static class OrganizationsEndpoints
         UploadDocument.Map(organizations);
         ListDocuments.Map(organizations);
         DeleteDocument.Map(organizations);
+        GetDocumentChunks.Map(organizations);
 
         return app;
     }

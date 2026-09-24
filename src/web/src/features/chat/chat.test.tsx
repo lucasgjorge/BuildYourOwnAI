@@ -31,6 +31,8 @@ function chatApi() {
     http.get('*/api/organizations', () => HttpResponse.json([summary(nexora), summary(acme)])),
     http.get('*/api/organizations/o1', () => HttpResponse.json(nexora)),
     http.get('*/api/organizations/o2', () => HttpResponse.json(acme)),
+    http.get('*/api/organizations/:org/documents/:doc/chunks/:index', ({ params }) =>
+      HttpResponse.json({ documentId: params.doc, fileName: 'doc.txt', chunkCount: 8, chunks: [{ index: Number(params.index), content: 'trecho' }] })),
     http.get('*/api/assistants/culture', () =>
       HttpResponse.json({ id: 'culture', organizationId: 'o1', organizationName: 'Nexora Tech', name: 'Culture', instructions: null, routingDescription: 'x', createdAt: '2026-09-24T10:00:00Z' })),
   ]
@@ -83,7 +85,7 @@ describe('entering the product', () => {
     expect(await within(nav).findByRole('link', { name: 'Nexora Tech' })).toHaveAttribute('href', '/organizations/o1')
     expect(within(nav).getByRole('link', { name: 'ACME' })).toHaveAttribute('href', '/organizations/o2')
     expect(within(nav).getByRole('button', { name: /Nova organização/ })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: 'Jev (todas)' })).toHaveAttribute('href', '/jev')
+    expect(within(nav).getByRole('link', { name: 'Todas as IAs' })).toHaveAttribute('href', '/all')
     await waitFor(() => expect(within(nav).getByRole('link', { name: 'Lacunas (2)' })).toHaveAttribute('href', '/gaps'))
     expect(within(nav).getByRole('button', { name: 'Sair' })).toBeInTheDocument()
   })
@@ -106,7 +108,7 @@ describe('entering the product', () => {
 
     renderApp('/organizations/o1')
 
-    const guide = await screen.findByText(/O Jev escolhe quem responde/)
+    const guide = await screen.findByText(/Ela vai sozinha para quem sabe responder/)
     const list = guide.closest('li')!
     for (const a of nexora.assistants) {
       expect(within(list).getByText(a.name)).toBeInTheDocument()
@@ -122,15 +124,15 @@ describe('entering the product', () => {
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/organizations/o1'))
     expect(await screen.findByRole('radio', { name: 'Culture' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Jev decide' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Escolha automática' })).not.toBeChecked()
   })
 })
 
 describe('organization chat', () => {
   // C12
-  it('chat sends to organization jev and shows who answered', async () => {
+  it('chat sends to organization routing and shows who answered', async () => {
     const sent: unknown[] = []
-    server.use(...chatApi(), http.post('*/api/organizations/o1/jev/ask', async ({ request }) => {
+    server.use(...chatApi(), http.post('*/api/organizations/o1/route/ask', async ({ request }) => {
       sent.push(await request.json())
       return HttpResponse.json(answered(ref('rh', 'RH'), 'Pelo portal, com 30 dias de antecedência.'))
     }))
@@ -142,7 +144,7 @@ describe('organization chat', () => {
     expect(sent).toEqual([{ question: 'Como peço férias?' }])
     expect(within(thread()).getByText('Como peço férias?')).toBeInTheDocument()
     expect(within(answer).getByText('Respondido por RH')).toBeInTheDocument()
-    expect(within(answer).getByText('via Jev')).toBeInTheDocument()
+    expect(within(answer).getByText('escolha automática')).toBeInTheDocument()
     expect(within(answer).getByText('01_rh.txt')).toBeInTheDocument()
     expect(within(answer).getByText('02_cultura.txt')).toBeInTheDocument()
     expect(within(answer).getByRole('button', { name: 'Perguntar a Culture' })).toBeInTheDocument()
@@ -153,7 +155,7 @@ describe('organization chat', () => {
     const asked: unknown[] = []
     server.use(
       ...chatApi(),
-      http.post('*/api/organizations/o1/jev/ask', () => HttpResponse.json(answered(ref('rh', 'RH'), 'Resposta do RH.'))),
+      http.post('*/api/organizations/o1/route/ask', () => HttpResponse.json(answered(ref('rh', 'RH'), 'Resposta do RH.'))),
       http.post('*/api/assistants/culture/ask', async ({ request }) => {
         asked.push(await request.json())
         return HttpResponse.json({ answer: 'Resposta da Culture.', found: true, sources: [] })
@@ -178,10 +180,10 @@ describe('organization chat', () => {
 
   // C14
   it('pinned assistant is asked directly', async () => {
-    let jevCalls = 0
+    let routingCalls = 0
     server.use(
       ...chatApi(),
-      http.post('*/api/organizations/o1/jev/ask', () => { jevCalls++; return HttpResponse.json({ kind: 'noMatch' }) }),
+      http.post('*/api/organizations/o1/route/ask', () => { routingCalls++; return HttpResponse.json({ kind: 'noMatch' }) }),
       http.post('*/api/assistants/tech/ask', () => HttpResponse.json({ answer: 'Use o pipeline X.', found: true, sources: [] })),
     )
     const { user } = renderApp('/organizations/o1')
@@ -191,15 +193,15 @@ describe('organization chat', () => {
 
     const answer = (await screen.findByText('Use o pipeline X.')).closest('article')!
     expect(within(answer).getByText('Respondido por Tech Team')).toBeInTheDocument()
-    expect(within(answer).queryByText('via Jev')).not.toBeInTheDocument()
-    expect(jevCalls).toBe(0)
+    expect(within(answer).queryByText('escolha automática')).not.toBeInTheDocument()
+    expect(routingCalls).toBe(0)
   })
 
   // C15
   it('chat clarify lets the user pick', async () => {
     server.use(
       ...chatApi(),
-      http.post('*/api/organizations/o1/jev/ask', () => HttpResponse.json({ kind: 'clarify', candidates: [ref('rh', 'RH'), ref('culture', 'Culture')] })),
+      http.post('*/api/organizations/o1/route/ask', () => HttpResponse.json({ kind: 'clarify', candidates: [ref('rh', 'RH'), ref('culture', 'Culture')] })),
       http.post('*/api/assistants/culture/ask', () => HttpResponse.json({ answer: 'Somos remotos.', found: true, sources: [] })),
     )
     const { user } = renderApp('/organizations/o1')
@@ -214,7 +216,7 @@ describe('organization chat', () => {
 
   // C16
   it('chat no match points to gaps', async () => {
-    server.use(...chatApi(), http.post('*/api/organizations/o1/jev/ask', () => HttpResponse.json({ kind: 'noMatch' })))
+    server.use(...chatApi(), http.post('*/api/organizations/o1/route/ask', () => HttpResponse.json({ kind: 'noMatch' })))
     const { user } = renderApp('/organizations/o1')
 
     await send(user, 'Vai chover amanhã?')
@@ -227,7 +229,7 @@ describe('organization chat', () => {
   it('not found answer is flagged', async () => {
     server.use(
       ...chatApi(),
-      http.post('*/api/organizations/o1/jev/ask', () => HttpResponse.json(answered(ref('rh', 'RH'), 'Não encontrei.', { found: false }))),
+      http.post('*/api/organizations/o1/route/ask', () => HttpResponse.json(answered(ref('rh', 'RH'), 'Não encontrei.', { found: false }))),
       http.post('*/api/assistants/culture/ask', () => HttpResponse.json({ answer: 'Encontrei.', found: true, sources: [] })),
     )
     const { user } = renderApp('/organizations/o1')
@@ -243,20 +245,20 @@ describe('organization chat', () => {
 
   // C18
   it('chat shows who is working while pending', async () => {
-    const jevGate = deferred()
+    const routingGate = deferred()
     const techGate = deferred()
     server.use(
       ...chatApi(),
-      http.post('*/api/organizations/o1/jev/ask', async () => { await jevGate.gate; return HttpResponse.json({ kind: 'noMatch' }) }),
+      http.post('*/api/organizations/o1/route/ask', async () => { await routingGate.gate; return HttpResponse.json({ kind: 'noMatch' }) }),
       http.post('*/api/assistants/tech/ask', async () => { await techGate.gate; return HttpResponse.json({ answer: 'ok', found: true, sources: [] }) }),
     )
     const { user } = renderApp('/organizations/o1')
 
     await send(user, 'Pergunta um')
-    expect(await screen.findByText('Jev está escolhendo…')).toBeInTheDocument()
+    expect(await screen.findByText('Escolhendo quem responde…')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled()
-    jevGate.release()
-    await waitFor(() => expect(screen.queryByText('Jev está escolhendo…')).not.toBeInTheDocument())
+    routingGate.release()
+    await waitFor(() => expect(screen.queryByText('Escolhendo quem responde…')).not.toBeInTheDocument())
 
     await user.click(screen.getByRole('radio', { name: 'Tech Team' }))
     await send(user, 'Pergunta dois')
@@ -268,7 +270,7 @@ describe('organization chat', () => {
 
   // C19
   it('chat error shows title and restores the message', async () => {
-    server.use(...chatApi(), http.post('*/api/organizations/o1/jev/ask', () => problem(502, 'O provedor de IA falhou. Tente novamente em instantes.')))
+    server.use(...chatApi(), http.post('*/api/organizations/o1/route/ask', () => problem(502, 'O provedor de IA falhou. Tente novamente em instantes.')))
     const { user } = renderApp('/organizations/o1')
 
     await send(user, 'Como peço férias?')
@@ -279,7 +281,7 @@ describe('organization chat', () => {
 
   // C20
   it('chat without eligible assistants links to base', async () => {
-    server.use(...chatApi(), http.post('*/api/organizations/o1/jev/ask', () => problem(422, 'Nenhuma IA desta organização está disponível para o Jev.')))
+    server.use(...chatApi(), http.post('*/api/organizations/o1/route/ask', () => problem(422, 'Nenhuma IA desta organização está disponível para a escolha automática.')))
     const { user } = renderApp('/organizations/o1')
 
     await send(user, 'Como peço férias?')
@@ -291,7 +293,7 @@ describe('organization chat', () => {
 
   // C24
   it('switching organization starts an empty thread', async () => {
-    server.use(...chatApi(), http.post('*/api/organizations/o1/jev/ask', () => HttpResponse.json(answered(ref('rh', 'RH'), 'Resposta do RH.'))))
+    server.use(...chatApi(), http.post('*/api/organizations/o1/route/ask', () => HttpResponse.json(answered(ref('rh', 'RH'), 'Resposta do RH.'))))
     const { user } = renderApp('/organizations/o1')
 
     await send(user, 'Como peço férias?')

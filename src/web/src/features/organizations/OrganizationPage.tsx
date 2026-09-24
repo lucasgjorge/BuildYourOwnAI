@@ -9,7 +9,7 @@ import { useCurrentOrganization } from './context'
 import type { OrganizationDetail } from './types'
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
-  `border-b-2 px-1 pb-2 text-sm transition-colors ${isActive ? 'border-jev font-semibold text-ink' : 'border-transparent text-muted hover:text-ink'}`
+  `border-b-2 px-1 pb-2 text-sm transition-colors ${isActive ? 'border-route font-semibold text-ink' : 'border-transparent text-muted hover:text-ink'}`
 
 /** `/organizations/:id`: the organization's header and its two tabs, Conversa and Base. */
 export function OrganizationLayout() {
@@ -85,7 +85,7 @@ function Documents({ organizationId }: { organizationId: string }) {
             type="file"
             accept=".pdf,.txt,.md"
             onChange={e => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full cursor-pointer text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-jev-soft file:px-3 file:py-2 file:font-medium file:text-jev"
+            className="block w-full cursor-pointer text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-route-soft file:px-3 file:py-2 file:font-medium file:text-route"
           />
         </label>
         <Button type="submit" disabled={upload.isPending || !file}>
@@ -139,7 +139,7 @@ function Assistants({ organization }: { organization: OrganizationDetail }) {
 
   return (
     <section className="flex flex-col gap-4">
-      <SectionTitle title="IAs" hint="Cada IA tem um jeito de responder. O Jev usa o “Quando usar” para escolher quem responde." />
+      <SectionTitle title="IAs" hint="Cada IA tem um jeito de responder. A escolha automática usa o “Quando usar” para decidir quem responde." />
       {organization.assistants.length === 0 && <p className="text-sm text-muted">Nenhuma IA nesta organização</p>}
       {remove.isError && <Alert>{errorTitle(remove.error)}</Alert>}
       <ul className="flex flex-col gap-2">
@@ -151,7 +151,7 @@ function Assistants({ organization }: { organization: OrganizationDetail }) {
           >
             <span className="flex min-w-0 flex-col">
               <Link to={`/assistants/${a.id}`} className="font-medium hover:underline">{a.name}</Link>
-              <span className="text-sm text-muted">{a.routingDescription ?? 'Fora do Jev'}</span>
+              <span className="text-sm text-muted">{a.routingDescription ?? 'Fora da escolha automática'}</span>
             </span>
             <button onClick={() => confirmDelete(a.id, a.name)} aria-label={`Apagar IA ${a.name}`} className="shrink-0 text-sm text-danger hover:underline">
               Apagar
@@ -182,7 +182,7 @@ function Assistants({ organization }: { organization: OrganizationDetail }) {
           />
         </label>
         <p id="routing-help" className="-mt-2 text-xs text-muted">
-          O Jev usa isto para escolher a IA. Deixe vazio para manter a IA fora do Jev.
+          A escolha automática usa isto para decidir quem responde. Deixe vazio para a IA só responder quando for escolhida no “Para”.
         </p>
         {create.isError && <Alert>{errorTitle(create.error)}</Alert>}
         <Button type="submit" disabled={create.isPending} className="self-start">

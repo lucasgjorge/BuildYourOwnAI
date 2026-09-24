@@ -25,3 +25,10 @@ export type DocumentItem = {
   chunkCount: number
   uploadedAt: string
 }
+
+export type DocumentChunks = {
+  documentId: string
+  fileName: string
+  chunkCount: number
+  chunks: { index: number; content: string }[]
+}

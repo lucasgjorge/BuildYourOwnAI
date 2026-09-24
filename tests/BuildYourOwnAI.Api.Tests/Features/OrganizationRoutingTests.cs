@@ -4,12 +4,12 @@ using BuildYourOwnAI.Api.Tests.Infrastructure;
 
 namespace BuildYourOwnAI.Api.Tests.Features;
 
-public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(factory)
+public sealed class OrganizationRoutingTests(ApiFactory factory) : ApiTestBase(factory)
 {
     private static string Marker() => "m" + Guid.NewGuid().ToString("N");
 
-    private static Task<HttpResponseMessage> OrgJevAsync(HttpClient client, Guid organization, string question) =>
-        client.PostAsJsonAsync($"/api/organizations/{organization}/jev/ask", new { question });
+    private static Task<HttpResponseMessage> OrgRouteAsync(HttpClient client, Guid organization, string question) =>
+        client.PostAsJsonAsync($"/api/organizations/{organization}/route/ask", new { question });
 
     // C1
     [Fact]
@@ -28,7 +28,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
         await CreateAssistantInAsync(other, await CreateOrganizationAsync(other), "Alheia", routingDescription: foreign);
         var question = $"como peço ferias {Marker()}";
 
-        Assert.Equal(HttpStatusCode.OK, (await OrgJevAsync(client, nexora, question)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await OrgRouteAsync(client, nexora, question)).StatusCode);
 
         var prompt = Factory.Router.PromptContaining(question);
         Assert.Contains("RH", prompt);
@@ -53,7 +53,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
         var document = await UploadOkAsync(client, nexora, "rh.txt", "ferias sao pedidas pelo portal");
         await UploadOkAsync(client, acme, "acme.txt", "ferias na acme sao outra coisa");
 
-        var response = await OrgJevAsync(client, nexora, $"ferias {FakeAiTriggers.Route(2)} {FakeAiTriggers.Found}");
+        var response = await OrgRouteAsync(client, nexora, $"ferias {FakeAiTriggers.Route(2)} {FakeAiTriggers.Found}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await JsonAsync(response);
@@ -75,7 +75,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
         await CreateAssistantInAsync(client, nexora, "RH", routingDescription: "processos de RH");
         var question = $"previsao do tempo {Marker()} {FakeAiTriggers.Route("NONE")}";
 
-        var response = await OrgJevAsync(client, nexora, question);
+        var response = await OrgRouteAsync(client, nexora, question);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("noMatch", (await JsonAsync(response)).GetProperty("kind").GetString());
@@ -97,7 +97,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
         await CreateAssistantInAsync(intruder, await CreateOrganizationAsync(intruder), "Minha", routingDescription: "tudo");
         var question = $"pergunta {Marker()}";
 
-        var response = await OrgJevAsync(intruder, missing ? Guid.NewGuid() : foreign, question);
+        var response = await OrgRouteAsync(intruder, missing ? Guid.NewGuid() : foreign, question);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -117,7 +117,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
         await CreateAssistantInAsync(client, await CreateOrganizationAsync(client, "Outra"), "RH", routingDescription: "processos de RH");
         var question = $"pergunta {Marker()}";
 
-        var response = await OrgJevAsync(client, empty, question);
+        var response = await OrgRouteAsync(client, empty, question);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -131,7 +131,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
     [InlineData("low-confidence")]
     [InlineData("router-throws")]
     [InlineData("chat-fails")]
-    public async Task Keeps_global_jev_rules(string scenario)
+    public async Task Keeps_all_assistants_routing_rules(string scenario)
     {
         var client = await NewUserClientAsync();
         var nexora = await CreateOrganizationAsync(client, "Nexora");
@@ -146,7 +146,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
             _ => $"pergunta {FakeAiTriggers.Route(1)} {FakeAiTriggers.FailChat}",
         };
 
-        var response = await OrgJevAsync(client, nexora, question);
+        var response = await OrgRouteAsync(client, nexora, question);
 
         switch (scenario)
         {
@@ -167,7 +167,7 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
 
     // C7
     [Fact]
-    public async Task Shares_rate_limit_with_ask_and_global_jev()
+    public async Task Shares_rate_limit_with_ask_and_all_assistants_routing()
     {
         var client = await NewUserClientAsync();
         var nexora = await CreateOrganizationAsync(client, "Nexora");
@@ -176,10 +176,10 @@ public sealed class OrganizationJevTests(ApiFactory factory) : ApiTestBase(facto
         for (var i = 1; i <= 10; i++)
             Assert.Equal(HttpStatusCode.OK, (await AskAsync(client, hr, $"pergunta {i}")).StatusCode);
         for (var i = 11; i <= 15; i++)
-            Assert.Equal(HttpStatusCode.OK, (await JevAsync(client, $"pergunta {i}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await RouteAsync(client, $"pergunta {i}")).StatusCode);
         for (var i = 16; i <= 20; i++)
-            Assert.Equal(HttpStatusCode.OK, (await OrgJevAsync(client, nexora, $"pergunta {i}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await OrgRouteAsync(client, nexora, $"pergunta {i}")).StatusCode);
 
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await OrgJevAsync(client, nexora, "pergunta 21")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await OrgRouteAsync(client, nexora, "pergunta 21")).StatusCode);
     }
 }

@@ -9,7 +9,7 @@ using Pgvector.EntityFrameworkCore;
 
 namespace BuildYourOwnAI.Api.Common;
 
-/// <summary>Retrieve -> answer -> open a gap when not found. Shared by a direct ask and by Jev.</summary>
+/// <summary>Retrieve -> answer -> open a gap when not found. Shared by a direct ask and by the automatic choice.</summary>
 public static class AskPipeline
 {
     public const string RateLimitPolicy = "ask";

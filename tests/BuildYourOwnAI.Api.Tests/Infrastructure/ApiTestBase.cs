@@ -104,8 +104,8 @@ public abstract class ApiTestBase(ApiFactory factory)
         return Convert.ToInt64(await command.ExecuteScalarAsync());
     }
 
-    protected static Task<HttpResponseMessage> JevAsync(HttpClient client, string question) =>
-        client.PostAsJsonAsync("/api/jev/ask", new { question });
+    protected static Task<HttpResponseMessage> RouteAsync(HttpClient client, string question) =>
+        client.PostAsJsonAsync("/api/route/ask", new { question });
 
     protected Task<long> DocumentCountAsync(Guid organizationId) =>
         ScalarAsync("select count(*) from documents where organization_id = @id", ("id", organizationId));

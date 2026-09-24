@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, postJson } from '../../shared/api/client'
-import type { DocumentItem, OrganizationDetail, OrganizationSummary } from './types'
+import type { DocumentChunks, DocumentItem, OrganizationDetail, OrganizationSummary } from './types'
 
 export const organizationKeys = {
   all: ['organizations'] as const,
@@ -62,5 +62,14 @@ export function useDeleteDocument(organizationId: string) {
     mutationFn: (documentId: string) =>
       apiFetch<void>(`/api/organizations/${organizationId}/documents/${documentId}`, { method: 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: organizationKeys.all }),
+  })
+}
+
+/** A cited chunk with one neighbor on each side, for the preview panel. */
+export function useDocumentChunk(organizationId: string, documentId: string, chunkIndex: number) {
+  return useQuery({
+    queryKey: ['organizations', organizationId, 'documents', documentId, 'chunks', chunkIndex],
+    queryFn: () => apiFetch<DocumentChunks>(`/api/organizations/${organizationId}/documents/${documentId}/chunks/${chunkIndex}?around=1`),
+    retry: false,
   })
 }

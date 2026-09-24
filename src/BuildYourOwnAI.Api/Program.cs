@@ -4,8 +4,8 @@ using BuildYourOwnAI.Api.Features.Ask;
 using BuildYourOwnAI.Api.Features.Assistants;
 using BuildYourOwnAI.Api.Features.Auth;
 using BuildYourOwnAI.Api.Features.Gaps;
-using BuildYourOwnAI.Api.Features.Jev;
 using BuildYourOwnAI.Api.Features.Organizations;
+using BuildYourOwnAI.Api.Features.Routing;
 using BuildYourOwnAI.Api.Infrastructure;
 using BuildYourOwnAI.Api.Infrastructure.Ai;
 using BuildYourOwnAI.Api.Infrastructure.Data;
@@ -79,7 +79,7 @@ app.UseRateLimiter();
 app.MapAuthEndpoints();
 app.MapOrganizationsEndpoints();
 app.MapAssistantsEndpoints();
-app.MapJevEndpoints();
+app.MapRoutingEndpoints();
 app.MapGapsEndpoints();
 
 // Unknown /api routes are API 404s, never the SPA page (door 9).

@@ -38,7 +38,7 @@ public static class AnswerGap
         if (gap.Status != GapStatus.Open)
             return GapsEndpoints.AlreadyClosed();
 
-        // A gap Jev could not route has no organization; the owner picks where the answer goes.
+        // A gap the all-assistants chat could not route has no organization; the owner picks where the answer goes.
         var organizationId = gap.OrganizationId ?? request.OrganizationId;
         if (organizationId is null)
             return TypedResults.ValidationProblem(new Dictionary<string, string[]>

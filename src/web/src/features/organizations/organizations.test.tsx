@@ -83,9 +83,9 @@ describe('organization base tab', () => {
     expect(screen.getByText('manual.txt')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Direto' })).toHaveAttribute('href', '/assistants/a1')
     expect(screen.getByRole('link', { name: 'Professor' })).toBeInTheDocument()
-    // Each AI shows its "Quando usar", or that it stays out of Jev without one.
+    // Each AI shows its "Quando usar", or that it stays out of the automatic choice without one.
     expect(screen.getByRole('link', { name: 'Direto' }).closest('li')).toHaveTextContent('respostas curtas')
-    expect(screen.getByRole('link', { name: 'Professor' }).closest('li')).toHaveTextContent('Fora do Jev')
+    expect(screen.getByRole('link', { name: 'Professor' }).closest('li')).toHaveTextContent('Fora da escolha automática')
     expect(screen.getByLabelText(/Arquivo/)).toHaveAttribute('type', 'file')
     expect(screen.getByRole('button', { name: 'Enviar' })).toBeInTheDocument()
 

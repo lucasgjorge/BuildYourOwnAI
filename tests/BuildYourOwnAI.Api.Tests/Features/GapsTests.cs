@@ -59,14 +59,14 @@ public sealed class GapsTests(ApiFactory factory) : ApiTestBase(factory)
 
     // C36
     [Fact]
-    public async Task Jev_routed_unanswered_question_opens_gap()
+    public async Task Routed_unanswered_question_opens_gap()
     {
         var client = await NewUserClientAsync();
         var organization = await CreateOrganizationAsync(client, "ACME");
         var assistant = await CreateAssistantInAsync(client, organization, "Direto", routingDescription: "respostas curtas");
         var question = $"qual o horario {Marker()} {FakeAiTriggers.Route(1)} {FakeAiTriggers.NotFound}";
 
-        var body = await JsonAsync(await JevAsync(client, question));
+        var body = await JsonAsync(await RouteAsync(client, question));
 
         Assert.Equal("answered", body.GetProperty("kind").GetString());
         Assert.False(body.GetProperty("found").GetBoolean());
@@ -88,9 +88,9 @@ public sealed class GapsTests(ApiFactory factory) : ApiTestBase(factory)
         await AskAsync(client, acmeAssistant, question);
         await AskAsync(client, acmeAssistant, $"  QUAL o   horário?   {seed}  {FakeAiTriggers.NotFound} ");
         await AskAsync(client, globexAssistant, question);
-        var jevQuestion = $"previsao do tempo {Marker()} {FakeAiTriggers.Route("NONE")}";
-        await JevAsync(client, jevQuestion);
-        await JevAsync(client, jevQuestion);
+        var routedQuestion = $"previsao do tempo {Marker()} {FakeAiTriggers.Route("NONE")}";
+        await RouteAsync(client, routedQuestion);
+        await RouteAsync(client, routedQuestion);
 
         var gaps = await ListAsync(client);
         var byQuestion = gaps.Where(g => g.GetProperty("question").GetString() == question).ToList();
@@ -100,9 +100,9 @@ public sealed class GapsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.True(acme.GetProperty("lastAskedAt").GetDateTimeOffset() > acme.GetProperty("firstAskedAt").GetDateTimeOffset());
         var globex = Assert.Single(byQuestion, g => g.GetProperty("organization").GetProperty("name").GetString() == "Globex");
         Assert.Equal(1, globex.GetProperty("askCount").GetInt32());
-        var jev = await GapAsync(client, jevQuestion);
-        Assert.Equal(2, jev.GetProperty("askCount").GetInt32());
-        Assert.Equal(JsonValueKind.Null, jev.GetProperty("organization").ValueKind);
+        var routed = await GapAsync(client, routedQuestion);
+        Assert.Equal(2, routed.GetProperty("askCount").GetInt32());
+        Assert.Equal(JsonValueKind.Null, routed.GetProperty("organization").ValueKind);
     }
 
     // C38
@@ -151,14 +151,14 @@ public sealed class GapsTests(ApiFactory factory) : ApiTestBase(factory)
         var (_, dismissed) = await OpenGapAsync(client, assistant, $"dispensada {Marker()}");
         Assert.Equal(HttpStatusCode.OK, (await AnswerAsync(client, answered, "resposta")).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await DismissAsync(client, dismissed)).StatusCode);
-        var jevQuestion = $"sem ia {Marker()} {FakeAiTriggers.Route("NONE")}";
-        await JevAsync(client, jevQuestion);
+        var routedQuestion = $"sem ia {Marker()} {FakeAiTriggers.Route("NONE")}";
+        await RouteAsync(client, routedQuestion);
         var other = await NewUserClientAsync();
         await OpenGapAsync(other, await CreateAssistantAsync(other), $"de outro {Marker()}");
 
         var gaps = await ListAsync(client);
 
-        Assert.Equal([thrice, jevQuestion, later, once], gaps.Select(g => g.GetProperty("question").GetString()));
+        Assert.Equal([thrice, routedQuestion, later, once], gaps.Select(g => g.GetProperty("question").GetString()));
         var top = gaps[0];
         Assert.Equal(3, top.GetProperty("askCount").GetInt32());
         Assert.True(top.GetProperty("firstAskedAt").GetDateTimeOffset() < top.GetProperty("lastAskedAt").GetDateTimeOffset());
@@ -220,7 +220,7 @@ public sealed class GapsTests(ApiFactory factory) : ApiTestBase(factory)
         var organization = await CreateOrganizationAsync(client, "ACME");
         await CreateAssistantInAsync(client, organization, "Direto", routingDescription: "respostas curtas");
         var question = $"sem ia {Marker()} {FakeAiTriggers.Route("NONE")}";
-        await JevAsync(client, question);
+        await RouteAsync(client, question);
         var gap = (await GapAsync(client, question)).GetProperty("id").GetGuid();
         var other = await NewUserClientAsync();
         var foreign = await CreateOrganizationAsync(other);

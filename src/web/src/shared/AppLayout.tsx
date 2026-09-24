@@ -7,7 +7,7 @@ import { CreateOrganizationForm } from '../features/organizations/CreateOrganiza
 
 const itemClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-    isActive ? 'bg-jev-soft font-semibold text-ink' : 'text-ink/80 hover:bg-fog'
+    isActive ? 'bg-route-soft font-semibold text-ink' : 'text-ink/80 hover:bg-fog'
   }`
 
 /** Shell of every authenticated page: organizations on the left, the page on the right. */
@@ -20,7 +20,8 @@ export function AppLayout() {
   const openGaps = gaps.data?.length ?? 0
 
   return (
-    <div className="min-h-screen md:flex">
+    // overflow-x-clip: nothing in the app may scroll the page sideways and cut the sidebar (source-preview, AC 17).
+    <div data-testid="app-shell" className="min-h-screen overflow-x-clip md:flex">
       <aside className="border-b border-line bg-surface md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-r md:border-b-0">
         <nav aria-label="Principal" className="flex h-full flex-col gap-6 p-4">
           <Link to="/" className="font-display text-lg font-bold tracking-tight">
@@ -34,7 +35,7 @@ export function AppLayout() {
               {organizations.data?.map(o => (
                 <li key={o.id}>
                   <NavLink to={`/organizations/${o.id}`} className={itemClass}>
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-jev" />
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-route" />
                     {o.name}
                   </NavLink>
                 </li>
@@ -45,14 +46,14 @@ export function AppLayout() {
                 <CreateOrganizationForm compact />
               </div>
             ) : (
-              <button onClick={() => setCreating(true)} className="rounded-md px-2 py-1.5 text-left text-sm text-jev hover:bg-jev-soft">
+              <button onClick={() => setCreating(true)} className="rounded-md px-2 py-1.5 text-left text-sm text-route hover:bg-route-soft">
                 + Nova organização
               </button>
             )}
           </section>
 
           <section className="flex flex-col gap-0.5 md:mt-auto">
-            <NavLink to="/jev" className={itemClass}>Jev (todas)</NavLink>
+            <NavLink to="/all" className={itemClass}>Todas as IAs</NavLink>
             <NavLink to="/gaps" className={itemClass}>{openGaps > 0 ? `Lacunas (${openGaps})` : 'Lacunas'}</NavLink>
             <button
               onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}

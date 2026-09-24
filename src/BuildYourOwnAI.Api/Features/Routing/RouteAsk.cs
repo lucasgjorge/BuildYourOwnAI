@@ -6,10 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 
-namespace BuildYourOwnAI.Api.Features.Jev;
+namespace BuildYourOwnAI.Api.Features.Routing;
 
-/// <summary>Jev: picks which of the user's assistants answers a question, then asks it through the regular ask pipeline.</summary>
-public static class JevAsk
+/// <summary>Automatic choice: picks which of the user's assistants answers a question, then asks it through the regular ask pipeline.</summary>
+public static class RouteAsk
 {
     private const int MaxOptions = 3;
     private const int MaxFallbackCandidates = 5;
@@ -21,7 +21,7 @@ public static class JevAsk
 
     public sealed record AssistantRef(Guid Id, string Name, string OrganizationName);
 
-    // jev-gaps door 5: one shape, discriminated by Kind ∈ {answered, clarify, noMatch}.
+    // One shape, discriminated by Kind ∈ {answered, clarify, noMatch}.
     public sealed record Response(
         string Kind,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AssistantRef? Assistant = null,
@@ -36,30 +36,30 @@ public static class JevAsk
         public AssistantRef Ref => new(Id, Name, OrganizationName);
     }
 
-    /// <summary>Jev's pick: an assistant (null for "none of them"), how sure it is, and every assistant by probability.</summary>
+    /// <summary>The pick: an assistant (null for "none of them"), how sure it is, and every assistant by probability.</summary>
     private sealed record Decision(Eligible? Chosen, bool Confident, List<Eligible> ByProbability);
 
-    public static IEndpointRouteBuilder MapJevEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapRoutingEndpoints(this IEndpointRouteBuilder app)
     {
-        // Global Jev: routes among all of the user's assistants.
-        app.MapPost("/api/jev/ask", (
+        // All assistants: routes among every assistant of the user.
+        app.MapPost("/api/route/ask", (
                 Request request, AppDbContext db, ICurrentUser currentUser,
-                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IJevChoice jev,
+                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IRoutingChoice routing,
                 IOptions<AiOptions> ai, ILoggerFactory loggerFactory, CancellationToken ct) =>
-                Handle(null, request, db, currentUser, embeddings, chat, jev, ai.Value.Jev, loggerFactory, ct))
+                Handle(null, request, db, currentUser, embeddings, chat, routing, ai.Value.Routing, loggerFactory, ct))
             .RequireAuthorization()
             .RequireRateLimiting(AskPipeline.RateLimitPolicy)
-            .WithTags("Jev");
+            .WithTags("Routing");
 
-        // Door 1 (org-chat): the organization's Jev routes only among that organization's assistants.
-        app.MapPost("/api/organizations/{id:guid}/jev/ask", (
+        // Door 1 (org-chat): an organization's chat routes only among that organization's assistants.
+        app.MapPost("/api/organizations/{id:guid}/route/ask", (
                 Guid id, Request request, AppDbContext db, ICurrentUser currentUser,
-                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IJevChoice jev,
+                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IRoutingChoice routing,
                 IOptions<AiOptions> ai, ILoggerFactory loggerFactory, CancellationToken ct) =>
-                Handle(id, request, db, currentUser, embeddings, chat, jev, ai.Value.Jev, loggerFactory, ct))
+                Handle(id, request, db, currentUser, embeddings, chat, routing, ai.Value.Routing, loggerFactory, ct))
             .RequireAuthorization()
             .RequireRateLimiting(AskPipeline.RateLimitPolicy)
-            .WithTags("Jev");
+            .WithTags("Routing");
 
         return app;
     }
@@ -71,12 +71,12 @@ public static class JevAsk
         ICurrentUser currentUser,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
         IChatClient chat,
-        IJevChoice jev,
-        AiOptions.JevSection settings,
+        IRoutingChoice routing,
+        AiOptions.RoutingSection settings,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
-        var logger = loggerFactory.CreateLogger(typeof(JevAsk));
+        var logger = loggerFactory.CreateLogger(typeof(RouteAsk));
         var question = request.Question?.Trim() ?? "";
         if (AskPipeline.InvalidQuestion(question) is { } invalid)
             return invalid;
@@ -94,10 +94,10 @@ public static class JevAsk
             return Results.Problem(
                 statusCode: StatusCodes.Status422UnprocessableEntity,
                 title: organizationId is null
-                    ? "Nenhuma IA disponível para o Jev. Preencha 'Quando usar esta IA' em pelo menos uma IA."
-                    : "Nenhuma IA desta organização está disponível para o Jev. Preencha 'Quando usar esta IA' em pelo menos uma.");
+                    ? "Nenhuma IA disponível para a escolha automática. Preencha 'Quando usar esta IA' em pelo menos uma IA."
+                    : "Nenhuma IA desta organização está disponível para a escolha automática. Preencha 'Quando usar esta IA' em pelo menos uma.");
 
-        var decision = await RouteAsync(jev, settings, eligible, question, logger, ct);
+        var decision = await ChooseAsync(routing, settings, eligible, question, logger, ct);
         if (decision is null)
             return Outcome(logger, eligible.Count, new Response("clarify", Candidates: Refs(eligible, MaxFallbackCandidates)));
 
@@ -106,7 +106,7 @@ public static class JevAsk
 
         if (decision.Chosen is not { } chosen)
         {
-            // A question the organization's Jev could not route still belongs to that organization.
+            // A question the organization's chat could not route still belongs to that organization.
             await GapRecorder.RecordAsync(db, currentUser.Id!, organizationId, null, question, logger, ct);
             return Outcome(logger, eligible.Count, new Response("noMatch"));
         }
@@ -126,29 +126,29 @@ public static class JevAsk
 
     private static IResult Outcome(ILogger logger, int eligibleCount, Response response)
     {
-        logger.LogInformation("Jev returned {Kind} among {EligibleCount} eligible assistants", response.Kind, eligibleCount);
+        logger.LogInformation("Routing returned {Kind} among {EligibleCount} eligible assistants", response.Kind, eligibleCount);
         return TypedResults.Ok(response);
     }
 
-    /// <summary>Asks Jev; null when the call failed or it picked a key it was not given (fallback to clarify).</summary>
-    private static async Task<Decision?> RouteAsync(
-        IJevChoice jev, AiOptions.JevSection settings, List<Eligible> eligible, string question, ILogger logger, CancellationToken ct)
+    /// <summary>Asks the choice primitive; null when the call failed or it picked a key it was not given (fallback to clarify).</summary>
+    private static async Task<Decision?> ChooseAsync(
+        IRoutingChoice routing, AiOptions.RoutingSection settings, List<Eligible> eligible, string question, ILogger logger, CancellationToken ct)
     {
-        // Door 2 (jev-choice): options are keyed by position, never by id, plus an explicit "none of them".
+        // Options are keyed by position, never by id, plus an explicit "none of them".
         // Only names, organizations and "when to use" go out: never instructions or documents.
         var criteria = eligible
             .Select((e, i) => (Key: (i + 1).ToString(), Text: $"{e.Name} (organização: {e.OrganizationName}): {e.RoutingDescription}"))
             .ToDictionary(o => o.Key, o => o.Text);
         criteria[NoneKey] = NoneDescription;
 
-        JevChoice choice;
+        RoutingChoice choice;
         try
         {
-            choice = await jev.ChooseAsync(question, Instructions, criteria, ct);
+            choice = await routing.ChooseAsync(question, Instructions, criteria, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning("Jev router call failed with {ExceptionType}", ex.GetType().Name);
+            logger.LogWarning("Routing call failed with {ExceptionType}", ex.GetType().Name);
             return null;
         }
 
@@ -157,7 +157,7 @@ public static class JevAsk
         {
             if (!int.TryParse(choice.Choice, out var index) || index < 1 || index > eligible.Count || choice.Choice != index.ToString())
             {
-                logger.LogWarning("Jev router picked an option it was not given");
+                logger.LogWarning("Routing picked an option it was not given");
                 return null;
             }
             chosen = eligible[index - 1];

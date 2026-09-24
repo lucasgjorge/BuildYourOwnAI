@@ -6,9 +6,9 @@ import { RequireAuth } from './features/auth/RequireAuth'
 import { ChatPage } from './features/chat/ChatPage'
 import { GapsPage } from './features/gaps/GapsPage'
 import { HomePage } from './features/home/HomePage'
-import { JevPage } from './features/jev/JevPage'
 import { KnowledgePage, OrganizationLayout } from './features/organizations/OrganizationPage'
 import { OrganizationsPage } from './features/organizations/OrganizationsPage'
+import { AllAssistantsPage } from './features/routing/AllAssistantsPage'
 import { AppLayout } from './shared/AppLayout'
 
 export function AppRoutes() {
@@ -25,7 +25,7 @@ export function AppRoutes() {
             <Route path="knowledge" element={<KnowledgePage />} />
           </Route>
           <Route path="/assistants/:id" element={<AssistantPage />} />
-          <Route path="/jev" element={<JevPage />} />
+          <Route path="/all" element={<AllAssistantsPage />} />
           <Route path="/gaps" element={<GapsPage />} />
         </Route>
       </Route>

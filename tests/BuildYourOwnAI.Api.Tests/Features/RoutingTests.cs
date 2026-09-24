@@ -5,7 +5,7 @@ using BuildYourOwnAI.Api.Tests.Infrastructure;
 
 namespace BuildYourOwnAI.Api.Tests.Features;
 
-public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
+public sealed class RoutingTests(ApiFactory factory) : ApiTestBase(factory)
 {
     private static string Marker() => "m" + Guid.NewGuid().ToString("N");
 
@@ -29,7 +29,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         await CreateAssistantInAsync(other, await CreateOrganizationAsync(other, "Alheia"), "Alheia", routingDescription: foreignDescription);
         var question = $"qual o horario {Marker()}";
 
-        Assert.Equal(HttpStatusCode.OK, (await JevAsync(client, question)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await RouteAsync(client, question)).StatusCode);
 
         var prompt = Factory.Router.PromptContaining(question);
         Assert.Contains("Direto", prompt);
@@ -56,7 +56,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         var globexDoc = await UploadOkAsync(client, globex, "aula.txt", "fotossintese acontece nas folhas");
         await UploadOkAsync(client, acme, "acme.txt", "manual da acme sobre fotossintese");
 
-        var response = await JevAsync(client, $"me explica fotossintese {FakeAiTriggers.Route(2)} {FakeAiTriggers.Found}");
+        var response = await RouteAsync(client, $"me explica fotossintese {FakeAiTriggers.Route(2)} {FakeAiTriggers.Found}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await JsonAsync(response);
@@ -83,7 +83,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         foreach (var name in new[] { "A", "B", "C", "D", "E" })
             await CreateAssistantInAsync(client, organization, name, routingDescription: $"descricao {name}");
 
-        var body = await JsonAsync(await JevAsync(client, $"pergunta {FakeAiTriggers.Route(1)}"));
+        var body = await JsonAsync(await RouteAsync(client, $"pergunta {FakeAiTriggers.Route(1)}"));
 
         Assert.Equal("answered", body.GetProperty("kind").GetString());
         Assert.Equal("A", body.GetProperty("assistant").GetProperty("name").GetString());
@@ -101,7 +101,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         var teacher = await CreateAssistantInAsync(client, organization, "Professor", routingDescription: "explicacoes");
         var question = $"ferias {Marker()} {FakeAiTriggers.Route("LOW1")}";
 
-        var response = await JevAsync(client, question);
+        var response = await RouteAsync(client, question);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await JsonAsync(response);
@@ -123,7 +123,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         await CreateAssistantInAsync(client, organization, "Direto", routingDescription: "respostas curtas");
         var question = $"previsao do tempo {Marker()} {FakeAiTriggers.Route("NONE")}";
 
-        var response = await JevAsync(client, question);
+        var response = await RouteAsync(client, question);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("noMatch", (await JsonAsync(response)).GetProperty("kind").GetString());
@@ -146,7 +146,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         foreach (var name in new[] { "F", "B", "E", "A", "D", "C" })
             await CreateAssistantInAsync(client, organization, name, routingDescription: $"descricao {name}");
 
-        var response = await JevAsync(client, $"pergunta {FakeAiTriggers.Route(behaviour)}");
+        var response = await RouteAsync(client, $"pergunta {FakeAiTriggers.Route(behaviour)}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await JsonAsync(response);
@@ -165,7 +165,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
             await CreateAssistantInAsync(client, await CreateOrganizationAsync(client), "SemDescricao");
         var question = $"pergunta {Marker()}";
 
-        var response = await JevAsync(client, question);
+        var response = await RouteAsync(client, question);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -184,7 +184,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         await CreateAssistantInAsync(client, await CreateOrganizationAsync(client), "Direto", routingDescription: "respostas curtas");
         if (question.StartsWith("q2")) question = new string('a', int.Parse(question[1..]));
 
-        var response = await JevAsync(client, question);
+        var response = await RouteAsync(client, question);
 
         Assert.Equal(expected, response.StatusCode);
         if (expected == HttpStatusCode.BadRequest)
@@ -201,9 +201,9 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         for (var i = 1; i <= 10; i++)
             Assert.Equal(HttpStatusCode.OK, (await AskAsync(client, id, $"pergunta {i}")).StatusCode);
         for (var i = 11; i <= 20; i++)
-            Assert.Equal(HttpStatusCode.OK, (await JevAsync(client, $"pergunta {i}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await RouteAsync(client, $"pergunta {i}")).StatusCode);
 
-        var limited = await JevAsync(client, "pergunta 21");
+        var limited = await RouteAsync(client, "pergunta 21");
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
         Assert.Equal("application/problem+json", limited.Content.Headers.ContentType?.MediaType);
     }
@@ -220,7 +220,7 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         await UploadOkAsync(client, organization, "a.txt", $"politica de ferias {documentMarker}");
         var question = $"politica de ferias {Marker()}";
 
-        await JevAsync(client, question);
+        await RouteAsync(client, question);
 
         var prompt = Factory.Router.PromptContaining(question);
         Assert.DoesNotContain(instructionsMarker, prompt);
@@ -234,10 +234,26 @@ public sealed class JevTests(ApiFactory factory) : ApiTestBase(factory)
         var client = await NewUserClientAsync();
         await CreateAssistantInAsync(client, await CreateOrganizationAsync(client), "Direto", routingDescription: "respostas curtas");
 
-        var response = await JevAsync(client, $"pergunta {FakeAiTriggers.Route(1)} {FakeAiTriggers.FailChat}");
+        var response = await RouteAsync(client, $"pergunta {FakeAiTriggers.Route(1)} {FakeAiTriggers.FailChat}");
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         Assert.DoesNotContain(FakeAiTriggers.ProviderSecretMessage, await response.Content.ReadAsStringAsync());
+    }
+
+    // C7 (source-preview): the old routes named after a business are gone, without alias.
+    [Fact]
+    public async Task Old_jev_routes_are_gone()
+    {
+        var client = await NewUserClientAsync();
+        var organization = await CreateOrganizationAsync(client);
+        await CreateAssistantInAsync(client, organization, "RH", routingDescription: "processos de RH");
+
+        foreach (var path in new[] { "/api/jev/ask", $"/api/organizations/{organization}/jev/ask" })
+        {
+            var response = await client.PostAsJsonAsync(path, new { question = "como peço férias?" });
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        }
     }
 }

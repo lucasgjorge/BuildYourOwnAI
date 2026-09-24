@@ -129,20 +129,20 @@ public sealed class FakeChatClient : IChatClient
 }
 
 /// <summary>
-/// Stands in for the Jev "choice" primitive; decides by the __ROUTE_x__ marker in the question (the state).
+/// Stands in for the routing "choice" primitive; decides by the __ROUTE_x__ marker in the question (the state).
 /// A number picks that option with confidence 1, LOWn picks it with 0.3, NONE picks "nenhuma", TEXT picks a key
 /// that was never offered, THROW fails. The chosen option gets the probability of its confidence, the rest share what is left, each below the chosen one.
 /// </summary>
-public sealed partial class FakeRouterClient : IJevChoice
+public sealed partial class FakeRouterClient : IRoutingChoice
 {
     public const string OutputMarker = "router-output-5d1c";
 
     public ConcurrentQueue<string> Calls { get; } = new();
 
     /// <summary>When set, answers every call instead of the markers (reset it in a finally).</summary>
-    public Func<IReadOnlyDictionary<string, string>, JevChoice>? Override { get; set; }
+    public Func<IReadOnlyDictionary<string, string>, RoutingChoice>? Override { get; set; }
 
-    public Task<JevChoice> ChooseAsync(
+    public Task<RoutingChoice> ChooseAsync(
         string state, string instructions, IReadOnlyDictionary<string, string> criteria, CancellationToken ct)
     {
         Calls.Enqueue(string.Join("\n", [state, instructions, .. criteria.Select(c => $"{c.Key}: {c.Value}")]));
@@ -153,7 +153,7 @@ public sealed partial class FakeRouterClient : IJevChoice
         return Task.FromResult(behaviour switch
         {
             "THROW" => throw new HttpRequestException(FakeAiTriggers.ProviderSecretMessage),
-            "TEXT" => new JevChoice(OutputMarker, 1, new Dictionary<string, double>()),
+            "TEXT" => new RoutingChoice(OutputMarker, 1, new Dictionary<string, double>()),
             "NONE" => Pick(criteria, "nenhuma", 0.9),
             "NONELOW" => Pick(criteria, "nenhuma", 0.3),
             _ when behaviour.StartsWith("LOW") => Pick(criteria, behaviour[3..], 0.3),
@@ -161,14 +161,14 @@ public sealed partial class FakeRouterClient : IJevChoice
         });
     }
 
-    private static JevChoice Pick(IReadOnlyDictionary<string, string> criteria, string key, double confidence)
+    private static RoutingChoice Pick(IReadOnlyDictionary<string, string> criteria, string key, double confidence)
     {
         var others = criteria.Keys.Where(k => k != key).ToList();
         // The chosen option is always the most likely one, as it is for the real primitive.
         var share = others.Count == 0 ? 0 : Math.Min((1 - confidence) / others.Count, confidence / 2);
         var probabilities = others.ToDictionary(k => k, _ => share);
         probabilities[key] = confidence;
-        return new JevChoice(key, confidence, probabilities);
+        return new RoutingChoice(key, confidence, probabilities);
     }
 
     public string PromptContaining(string marker) => Calls.Single(c => c.Contains(marker));

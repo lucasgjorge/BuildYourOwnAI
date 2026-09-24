@@ -9,11 +9,11 @@ const steps = [
   },
   {
     title: 'Crie as IAs',
-    text: 'Dê a cada uma um nome, um jeito de responder e o “Quando usar”. É assim que o Jev sabe quando chamar cada uma.',
+    text: 'Dê a cada uma um nome, um jeito de responder e o “Quando usar”. É assim que o chat sabe quando chamar cada uma.',
   },
   {
-    title: 'Pergunte ao Jev',
-    text: 'Escreva no chat. O Jev escolhe a IA, a resposta cita os documentos, e você pede a opinião de outra IA com um clique.',
+    title: 'Pergunte no chat',
+    text: 'Escreva no chat. A pergunta vai sozinha para a IA certa, a resposta mostra o trecho do documento, e você pede a opinião de outra IA com um clique.',
   },
 ]
 
@@ -49,7 +49,7 @@ export function HomePage() {
         <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 pt-10 pb-20 lg:grid-cols-[1.1fr_1fr]">
           <div>
             <h1 className="font-display text-4xl leading-[1.05] font-bold tracking-tight md:text-6xl">
-              Uma IA para cada assunto. O Jev sabe para qual perguntar.
+              Uma IA para cada assunto. O chat sabe para qual perguntar.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted">
               Suba os documentos que você já tem, crie IAs com jeitos diferentes de responder e converse num chat só.
@@ -117,15 +117,15 @@ export function HomePage() {
   )
 }
 
-/** The signature: one question, Jev in the middle, and the lane that answers lit up. */
+/** The signature: one question, the automatic choice in the middle, and the lane that answers lit up. */
 function Switchboard() {
   const lanes = ['RH', 'Culture', 'Tech Team']
   return (
-    <figure aria-label="Exemplo: o Jev encaminha a pergunta para a IA de RH" className="rounded-2xl border border-line bg-surface p-6">
+    <figure aria-label="Exemplo: a pergunta vai sozinha para a IA de RH" className="rounded-2xl border border-line bg-surface p-6">
       <p className="ml-auto w-fit rounded-2xl rounded-br-sm bg-ink px-4 py-2.5 text-surface">Como peço férias?</p>
       <svg viewBox="0 0 320 150" className="my-4 w-full" aria-hidden>
-        <circle cx="40" cy="75" r="18" fill="var(--color-jev)" />
-        <text x="40" y="79" textAnchor="middle" fontSize="11" fontFamily="var(--font-mono)" fill="#fff">jev</text>
+        <circle cx="40" cy="75" r="18" fill="var(--color-route)" />
+        <text x="40" y="79" textAnchor="middle" fontSize="11" fontFamily="var(--font-mono)" fill="#fff">auto</text>
         {lanes.map((lane, i) => {
           const y = 25 + i * 50
           const lit = i === 0
@@ -147,7 +147,7 @@ function Switchboard() {
       </svg>
       <figcaption className="rounded-xl border border-line p-4" style={{ borderLeftColor: laneColor(0), borderLeftWidth: 3 }}>
         <span className="text-sm font-semibold" style={{ color: laneColor(0) }}>Respondido por RH</span>
-        <span className="ml-2 rounded bg-jev-soft px-1.5 py-0.5 font-mono text-[11px] text-jev">via Jev</span>
+        <span className="ml-2 rounded bg-route-soft px-1.5 py-0.5 font-mono text-[11px] text-route">escolha automática</span>
         <p className="mt-2 text-sm">Pelo portal do colaborador, com 30 dias de antecedência e aprovação do gestor.</p>
         <p className="mt-2 font-mono text-xs text-muted">01_rh.txt</p>
       </figcaption>

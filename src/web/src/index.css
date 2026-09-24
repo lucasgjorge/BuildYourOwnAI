@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Identity: a switchboard. Jev (jade) connects each question to the lane of the AI that answers it. */
+/* Identity: a switchboard. The automatic choice (jade) connects each question to the lane of the AI that answers it. */
 @theme {
   --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
@@ -11,8 +11,8 @@
   --color-ink: #16202e;
   --color-muted: #5e6b7c;
   --color-line: #d9dfe7;
-  --color-jev: #0e7c66;
-  --color-jev-soft: #e2f1ec;
+  --color-route: #0e7c66;
+  --color-route-soft: #e2f1ec;
   --color-danger: #b42318;
   --color-danger-soft: #fdecea;
 }
@@ -36,7 +36,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-jev);
+  outline: 2px solid var(--color-route);
   outline-offset: 2px;
   border-radius: 4px;
 }

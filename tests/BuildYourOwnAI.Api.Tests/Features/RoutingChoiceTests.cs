@@ -6,11 +6,11 @@ using BuildYourOwnAI.Api.Tests.Infrastructure;
 
 namespace BuildYourOwnAI.Api.Tests.Features;
 
-public sealed class JevChoiceTests(ApiFactory factory) : ApiTestBase(factory)
+public sealed class RoutingChoiceTests(ApiFactory factory) : ApiTestBase(factory)
 {
     private static string Marker() => "m" + Guid.NewGuid().ToString("N");
 
-    private async Task<JsonElement> WithChoiceAsync(Func<IReadOnlyDictionary<string, string>, JevChoice> answer, Func<Task<HttpResponseMessage>> call)
+    private async Task<JsonElement> WithChoiceAsync(Func<IReadOnlyDictionary<string, string>, RoutingChoice> answer, Func<Task<HttpResponseMessage>> call)
     {
         Factory.Router.Override = answer;
         try
@@ -41,8 +41,8 @@ public sealed class JevChoiceTests(ApiFactory factory) : ApiTestBase(factory)
         await WithChoiceAsync(criteria =>
         {
             sent = criteria;
-            return new JevChoice("1", 1, new Dictionary<string, double> { ["1"] = 1 });
-        }, () => client.PostAsJsonAsync($"/api/organizations/{nexora}/jev/ask", new { question }));
+            return new RoutingChoice("1", 1, new Dictionary<string, double> { ["1"] = 1 });
+        }, () => client.PostAsJsonAsync($"/api/organizations/{nexora}/route/ask", new { question }));
 
         Assert.Equal(["1", "2", "nenhuma"], sent!.Keys.Order());
         Assert.Contains("Culture", sent["1"]);
@@ -64,8 +64,8 @@ public sealed class JevChoiceTests(ApiFactory factory) : ApiTestBase(factory)
             ids[name] = await CreateAssistantInAsync(client, organization, name, routingDescription: $"descricao {name}");
 
         var body = await WithChoiceAsync(
-            _ => new JevChoice("2", 0.9, new Dictionary<string, double> { ["1"] = 0.02, ["2"] = 0.9, ["3"] = 0.03, ["4"] = 0.05, ["nenhuma"] = 0 }),
-            () => client.PostAsJsonAsync($"/api/organizations/{organization}/jev/ask", new { question = "pergunta" }));
+            _ => new RoutingChoice("2", 0.9, new Dictionary<string, double> { ["1"] = 0.02, ["2"] = 0.9, ["3"] = 0.03, ["4"] = 0.05, ["nenhuma"] = 0 }),
+            () => client.PostAsJsonAsync($"/api/organizations/{organization}/route/ask", new { question = "pergunta" }));
 
         Assert.Equal("answered", body.GetProperty("kind").GetString());
         Assert.Equal(ids["B"], body.GetProperty("assistant").GetProperty("id").GetGuid());
@@ -86,8 +86,8 @@ public sealed class JevChoiceTests(ApiFactory factory) : ApiTestBase(factory)
         var question = $"pergunta {Marker()}";
 
         var body = await WithChoiceAsync(
-            _ => new JevChoice("3", confidence, new Dictionary<string, double> { ["1"] = 0.1, ["2"] = 0.3, ["3"] = confidence, ["4"] = 0.01 }),
-            () => client.PostAsJsonAsync($"/api/organizations/{organization}/jev/ask", new { question }));
+            _ => new RoutingChoice("3", confidence, new Dictionary<string, double> { ["1"] = 0.1, ["2"] = 0.3, ["3"] = confidence, ["4"] = 0.01 }),
+            () => client.PostAsJsonAsync($"/api/organizations/{organization}/route/ask", new { question }));
 
         Assert.Equal(kind, body.GetProperty("kind").GetString());
         if (kind == "clarify")
@@ -100,9 +100,35 @@ public sealed class JevChoiceTests(ApiFactory factory) : ApiTestBase(factory)
             Assert.Equal(ids["C"], body.GetProperty("assistant").GetProperty("id").GetGuid());
         }
     }
+
+    // C8 (source-preview): the threshold is read from AI:Routing.
+    [Theory]
+    [InlineData(null, "answered")]
+    [InlineData("0.95", "clarify")]
+    public async Task Threshold_comes_from_routing_config(string? threshold, string kind)
+    {
+        using var app = threshold is null ? null : Factory.WithWebHostBuilder(b => b.UseSetting("AI:Routing:ConfidenceThreshold", threshold));
+        var client = app is null
+            ? await NewUserClientAsync()
+            : app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });
+        if (app is not null)
+        {
+            var email = NewEmail();
+            (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password })).EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
+        }
+        var organization = await CreateOrganizationAsync(client);
+        await CreateAssistantInAsync(client, organization, "RH", routingDescription: "processos de RH");
+
+        var body = await WithChoiceAsync(
+            _ => new RoutingChoice("1", 0.9, new Dictionary<string, double> { ["1"] = 0.9, ["nenhuma"] = 0.1 }),
+            () => client.PostAsJsonAsync($"/api/organizations/{organization}/route/ask", new { question = "como peço férias?" }));
+
+        Assert.Equal(kind, body.GetProperty("kind").GetString());
+    }
 }
 
-public sealed class OpenRouterJevChoiceTests
+public sealed class OpenRouterRoutingChoiceTests
 {
     private const string Key = "sk-or-test-key-3f9a";
 
@@ -119,13 +145,13 @@ public sealed class OpenRouterJevChoiceTests
         }
     }
 
-    private static OpenRouterJevChoice Client(StubHandler handler)
+    private static OpenRouterRoutingChoice Client(StubHandler handler)
     {
         var http = new HttpClient(handler);
-        OpenRouterJevChoice.Configure(http,
-            new AiOptions.OpenRouterSection { ApiKey = Key, Model = "jev-latest" },
-            new AiOptions.JevSection());
-        return new OpenRouterJevChoice(http, "jev-latest");
+        OpenRouterRoutingChoice.Configure(http,
+            new AiOptions.OpenRouterSection { ApiKey = Key, Model = "choice-model-test" },
+            new AiOptions.RoutingSection());
+        return new OpenRouterRoutingChoice(http, "choice-model-test");
     }
 
     private static readonly Dictionary<string, string> Criteria = new() { ["1"] = "RH", ["2"] = "Culture", ["nenhuma"] = "outro assunto" };
@@ -135,7 +161,7 @@ public sealed class OpenRouterJevChoiceTests
     public async Task Posts_choice_request_and_reads_principal_answer()
     {
         var handler = new StubHandler(HttpStatusCode.OK, """
-            {"model":"typesafe/jev-1.13","answers":{"principal":{"type":"choice","choice":"1","confidence":0.97,
+            {"model":"provider/choice-model-1","answers":{"principal":{"type":"choice","choice":"1","confidence":0.97,
              "probabilities":{"1":0.97,"2":0.02,"nenhuma":0.01}}},"provider":"TypeSafe"}
             """);
 
@@ -145,7 +171,7 @@ public sealed class OpenRouterJevChoiceTests
         Assert.Equal("https://openrouter.ai/api/v1/systemone", handler.Request.RequestUri!.ToString());
         Assert.Equal($"Bearer {Key}", handler.Request.Headers.Authorization!.ToString());
         using var sent = JsonDocument.Parse(handler.RequestBody!);
-        Assert.Equal("jev-latest", sent.RootElement.GetProperty("model").GetString());
+        Assert.Equal("choice-model-test", sent.RootElement.GetProperty("model").GetString());
         Assert.Equal("quando posso tirar ferias", sent.RootElement.GetProperty("state").GetString());
         var question = sent.RootElement.GetProperty("questions").GetProperty("principal");
         Assert.Equal("choice", question.GetProperty("type").GetString());

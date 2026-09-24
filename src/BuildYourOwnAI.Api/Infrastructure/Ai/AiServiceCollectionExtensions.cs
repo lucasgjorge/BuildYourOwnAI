@@ -12,7 +12,7 @@ public sealed class AiOptions
     public string EmbeddingModel { get; set; } = "text-embedding-3-small";
     public OpenAiSection OpenAI { get; set; } = new();
     public OpenRouterSection OpenRouter { get; set; } = new();
-    public JevSection Jev { get; set; } = new();
+    public RoutingSection Routing { get; set; } = new();
 
     public sealed class OpenAiSection
     {
@@ -26,9 +26,9 @@ public sealed class AiOptions
         public string BaseAddress { get; set; } = "https://openrouter.ai/api/v1/";
     }
 
-    public sealed class JevSection
+    public sealed class RoutingSection
     {
-        /// <summary>At or above this confidence Jev's choice is followed; below it, the user picks (door 2, jev-choice).</summary>
+        /// <summary>At or above this confidence the automatic choice is followed; below it, the user picks (AD-012).</summary>
         public double ConfidenceThreshold { get; set; } = 0.6;
         public int TimeoutSeconds { get; set; } = 10;
     }
@@ -45,17 +45,17 @@ public static class AiServiceCollectionExtensions
         var options = configuration.GetSection("AI").Get<AiOptions>() ?? new AiOptions();
         services.Configure<AiOptions>(configuration.GetSection("AI"));
 
-        // Door 1 (jev-choice, AD-012): Jev is the "choice" primitive on OpenRouter. Without key and model, Jev falls back to asking the user.
+        // AD-012: the automatic choice is the "choice" primitive on OpenRouter. Without key and model, the chat falls back to asking the user.
         if (string.IsNullOrWhiteSpace(options.OpenRouter.ApiKey) || string.IsNullOrWhiteSpace(options.OpenRouter.Model))
         {
-            services.AddSingleton<IJevChoice, UnconfiguredJevChoice>();
+            services.AddSingleton<IRoutingChoice, UnconfiguredRoutingChoice>();
         }
         else
         {
             var model = options.OpenRouter.Model;
-            services.AddHttpClient(nameof(OpenRouterJevChoice), client => OpenRouterJevChoice.Configure(client, options.OpenRouter, options.Jev));
-            services.AddTransient<IJevChoice>(sp =>
-                new OpenRouterJevChoice(sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(OpenRouterJevChoice)), model));
+            services.AddHttpClient(nameof(OpenRouterRoutingChoice), client => OpenRouterRoutingChoice.Configure(client, options.OpenRouter, options.Routing));
+            services.AddTransient<IRoutingChoice>(sp =>
+                new OpenRouterRoutingChoice(sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(OpenRouterRoutingChoice)), model));
         }
 
         if (string.IsNullOrWhiteSpace(options.OpenAI.ApiKey))

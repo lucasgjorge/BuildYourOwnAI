@@ -108,7 +108,7 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
 
     // C50
     [Fact]
-    public async Task Jev_and_gaps_never_log_content()
+    public async Task Routing_and_gaps_never_log_content()
     {
         var client = await NewUserClientAsync();
         var (_, assistant) = await NewAssistantAsync(client, "ACME", routingDescription: "respostas curtas");
@@ -122,8 +122,8 @@ public sealed class ObservabilityTests(ApiFactory factory) : ApiTestBase(factory
         var unanswered = $"pergunta {askSecret} {FakeAiTriggers.NotFound}";
         await AskAsync(client, assistant, unanswered);
         var afterAsk = Factory.Logs.Entries.Count;
-        await JevAsync(client, $"pergunta {routedSecret} {FakeAiTriggers.Route(1)} {FakeAiTriggers.Found}");
-        await JevAsync(client, $"pergunta {noMatchSecret} {FakeAiTriggers.Route("NONE")}");
+        await RouteAsync(client, $"pergunta {routedSecret} {FakeAiTriggers.Route(1)} {FakeAiTriggers.Found}");
+        await RouteAsync(client, $"pergunta {noMatchSecret} {FakeAiTriggers.Route("NONE")}");
         var gaps = await JsonAsync(await client.GetAsync("/api/gaps"));
         var gap = gaps.EnumerateArray().Single(g => g.GetProperty("question").GetString() == unanswered).GetProperty("id").GetGuid();
         var answered = await client.PostAsJsonAsync($"/api/gaps/{gap}/answer", new { answer = $"resposta {gapAnswerSecret}" });

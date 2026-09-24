@@ -13,7 +13,7 @@ describe('home', () => {
     expect(await screen.findByRole('heading', { level: 1, name: /Uma IA para cada assunto/ })).toBeInTheDocument()
     const how = screen.getByRole('region', { name: 'Como funciona' })
     const steps = within(how).getAllByRole('heading', { level: 3 }).map(h => h.textContent)
-    expect(steps).toEqual(['Monte a organização', 'Crie as IAs', 'Pergunte ao Jev'])
+    expect(steps).toEqual(['Monte a organização', 'Crie as IAs', 'Pergunte no chat'])
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/))
   })
 
