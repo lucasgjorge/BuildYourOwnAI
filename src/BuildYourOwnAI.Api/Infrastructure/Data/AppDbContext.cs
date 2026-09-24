@@ -12,6 +12,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<Chunk> Chunks => Set<Chunk>();
     public DbSet<Gap> Gaps => Set<Gap>();
+    public DbSet<StudySession> StudySessions => Set<StudySession>();
+    public DbSet<StudyQuestion> StudyQuestions => Set<StudyQuestion>();
 
     // Read per query by the global filters below; EF parameterizes it per DbContext instance.
     private string? CurrentUserId => currentUser.Id;
@@ -71,6 +73,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
                 .AreNullsDistinct(false)
                 .HasFilter("status = 'open'");
             e.HasQueryFilter(g => g.OwnerId == CurrentUserId);
+        });
+
+        builder.Entity<StudySession>(e =>
+        {
+            e.HasOne(s => s.Organization).WithMany().HasForeignKey(s => s.OrganizationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(s => s.Organization.OwnerId == CurrentUserId);
+        });
+
+        builder.Entity<StudyQuestion>(e =>
+        {
+            // study-mode door 1: the answer key stays on the server; a question is answered once.
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("ck_study_questions_options", "cardinality(options) = 4");
+                t.HasCheckConstraint("ck_study_questions_correct_option", "correct_option between 0 and 3");
+                t.HasCheckConstraint("ck_study_questions_chosen_option", "chosen_option is null or chosen_option between 0 and 3");
+            });
+            e.HasOne(q => q.Session).WithMany(s => s.Questions).HasForeignKey(q => q.SessionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(q => q.Document).WithMany().HasForeignKey(q => q.DocumentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(q => new { q.SessionId, q.Position }).IsUnique();
+            e.HasQueryFilter(q => q.Session.Organization.OwnerId == CurrentUserId);
         });
     }
 }

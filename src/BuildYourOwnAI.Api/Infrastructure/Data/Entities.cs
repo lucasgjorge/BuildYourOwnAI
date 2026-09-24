@@ -81,3 +81,39 @@ public sealed class Gap
     public GapStatus Status { get; set; }
     public Guid? DocumentId { get; set; }
 }
+
+/// <summary>A study round in an organization: questions generated from chunks of the chosen documents.</summary>
+public sealed class StudySession
+{
+    public static readonly int[] AllowedQuestionCounts = [5, 10, 20];
+
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public Guid OrganizationId { get; init; }
+    public Organization Organization { get; init; } = null!;
+    public int QuestionCount { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public List<StudyQuestion> Questions { get; init; } = [];
+}
+
+/// <summary>
+/// A multiple-choice question generated from one chunk. The right option never leaves the server before the
+/// question is answered (study-mode door 1); it is answered once.
+/// </summary>
+public sealed class StudyQuestion
+{
+    public const int OptionCount = 4;
+
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public Guid SessionId { get; init; }
+    public StudySession Session { get; init; } = null!;
+    public int Position { get; init; }
+    public Guid DocumentId { get; init; }
+    public Document Document { get; init; } = null!;
+    public int ChunkIndex { get; init; }
+    public required string Prompt { get; init; }
+    public required List<string> Options { get; init; }
+    public short CorrectOption { get; init; }
+    public required string Explanation { get; init; }
+    public short? ChosenOption { get; set; }
+    public DateTimeOffset? AnsweredAt { get; set; }
+}
