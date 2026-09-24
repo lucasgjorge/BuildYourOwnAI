@@ -48,12 +48,21 @@ function Documents({ assistantId }: { assistantId: string }) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">Documentos</h2>
-      <form onSubmit={submit} className="flex items-center gap-3">
-        <label className="flex flex-col gap-1 text-sm">
+      <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 sm:flex-row sm:items-end">
+        <label className="flex flex-1 flex-col gap-2 text-sm font-medium text-gray-700">
           Arquivo (PDF, TXT ou MD, até 10 MB)
-          <input type="file" accept=".pdf,.txt,.md" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+          <input
+            type="file"
+            accept=".pdf,.txt,.md"
+            onChange={e => setFile(e.target.files?.[0] ?? null)}
+            className="block w-full cursor-pointer text-sm text-gray-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-medium file:text-white hover:file:bg-blue-700"
+          />
         </label>
-        <button type="submit" disabled={upload.isPending || !file} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={upload.isPending || !file}
+          className="rounded bg-black px-5 py-2 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+        >
           {upload.isPending ? 'Processando...' : 'Enviar'}
         </button>
       </form>
