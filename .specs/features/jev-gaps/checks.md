@@ -14,7 +14,7 @@ Checks do rag-mvp afetados por este plano (o contrato mudou por decisão aprovad
 
 - Re-apontados para as rotas novas, mesmas asserções: C6 (lista de rotas protegidas passa a ser a deste plano), C10 (rotas `{id}` × {outro, inexistente}, agora também em `/api/organizations/{id}*`), C12-C20, C37, C40 (upload em `/api/organizations/{id}/documents`), C22-C28 (ask cria a IA dentro de uma organização)
 - Substituídos: C9 (`GET /api/assistants` sai) por C3 deste plano. C11 (apagar IA apagava documentos) por C12 e C49 deste plano: documentos pertencem à organização. C44 (`documentCount` em `GET /api/assistants/{id}`) por C9 deste plano, cujo Surface não tem mais esse campo
-- Telas do rag-mvp `/assistants` e `/assistants/{id}`: C30-C35, C47-C49, C51 migram para as telas `Organizações`/`Organização`/`IA` e são reprovadas por C16-C18 e C60 deste plano
+- Telas do rag-mvp `/assistants` e `/assistants/{id}`: C30-C35, C47-C51 migram para as telas `Organizações`/`Organização`/`IA` (`organizations.test.tsx`) e são reprovadas junto com C56-C60 deste plano. C45/C46: login e registro com sucesso levam a `/organizations` (a lista de IAs virou a lista de organizações)
 
 ## Checks
 
@@ -110,19 +110,19 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C29** - Sem `AI:OpenRouter:ApiKey`, a app sobe e `POST /api/jev/ask` com IA elegível responde `200` `kind = "clarify"` (door 4) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~UnconfiguredAiTests.Jev_without_router_key_falls_back_to_clarify"`
 
-**C30** - Tela `Jev`, `kind=answered`: mostra "Respondido por Direto · ACME", a resposta, e um botão por alternativa; clicar em "Professor" chama `POST /api/assistants/{professorId}/ask` com a mesma pergunta e passa a mostrar "Respondido por Professor · ACME" e a nova resposta (AC 28)
+**C30** - Tela `Jev`, `kind=answered`: mostra "Respondido por Direto · ACME", a resposta, e um botão por alternativa; clicar em "Professor" chama `POST /api/assistants/{professorId}/ask` com a mesma pergunta e passa a mostrar "Respondido por Professor · ACME" e a nova resposta (AC 28) ✓
 Proof: `npm --prefix src/web run test -- -t "jev answered shows who answered and switches"`
 
-**C31** - Tela `Jev`, `kind=clarify`: mostra "Qual destas IAs deve responder?" e um botão por candidato; clicar pergunta àquela IA e mostra "Respondido por <nome>" (AC 29)
+**C31** - Tela `Jev`, `kind=clarify`: mostra "Qual destas IAs deve responder?" e um botão por candidato; clicar pergunta àquela IA e mostra "Respondido por <nome>" (AC 29) ✓
 Proof: `npm --prefix src/web run test -- -t "jev clarify lets the user pick"`
 
-**C32** - Tela `Jev`, `kind=noMatch`: mostra "Nenhuma IA sabe responder isso ainda. A pergunta foi para Lacunas." (AC 30)
+**C32** - Tela `Jev`, `kind=noMatch`: mostra "Nenhuma IA sabe responder isso ainda. A pergunta foi para Lacunas." (AC 30) ✓
 Proof: `npm --prefix src/web run test -- -t "jev no match points to gaps"`
 
-**C33** - Tela `Jev`, `422`: mostra "Preencha 'Quando usar esta IA' em pelo menos uma IA para usar o Jev" e um link para `/organizations` (AC 31)
+**C33** - Tela `Jev`, `422`: mostra "Preencha 'Quando usar esta IA' em pelo menos uma IA para usar o Jev" e um link para `/organizations` (AC 31) ✓
 Proof: `npm --prefix src/web run test -- -t "jev without eligible assistants explains how to enable"`
 
-**C34** - Tela `Jev`: enquanto pendente mostra "Jev está escolhendo…" e o botão fica desabilitado; `429` e `502` mostram o `title` do problem details e mantêm a pergunta digitada (AC 32)
+**C34** - Tela `Jev`: enquanto pendente mostra "Jev está escolhendo…" e o botão fica desabilitado; `429` e `502` mostram o `title` do problem details e mantêm a pergunta digitada (AC 32) ✓
 Proof: `npm --prefix src/web run test -- -t "jev loading and error states"`
 
 ### S3 - Lacunas · ~10 files · ~45 KB · ~11k
@@ -175,36 +175,36 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C50** - Depois de um ask com `found=false`, um Jev `answered`, um Jev `noMatch` e uma resposta de lacuna, cada um com marcadores únicos na pergunta, na resposta e na saída do roteador, nenhum log capturado contém qualquer marcador; a criação de lacuna gera um log com `GapId` (AC 46, observability) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~CrossCuttingTests.Jev_and_gaps_never_log_content"`
 
-**C51** - Menu: com `GET /api/gaps` devolvendo 2 lacunas mostra "Lacunas (2)"; com `[]` mostra "Lacunas" sem número (AC 47)
+**C51** - Menu: com `GET /api/gaps` devolvendo 2 lacunas mostra "Lacunas (2)"; com `[]` mostra "Lacunas" sem número (AC 47) ✓
 Proof: `npm --prefix src/web run test -- -t "nav shows open gap count"`
 
-**C52** - Tela `Lacunas` com `[]` mostra "Nenhuma lacuna. Suas IAs responderam tudo o que foi perguntado." (AC 48)
+**C52** - Tela `Lacunas` com `[]` mostra "Nenhuma lacuna. Suas IAs responderam tudo o que foi perguntado." (AC 48) ✓
 Proof: `npm --prefix src/web run test -- -t "gaps empty state"`
 
-**C53** - Tela `Lacunas`: uma lacuna sem organização não envia a resposta enquanto nenhuma organização é escolhida no seletor; escolhida, envia `answer` e `organizationId`, e depois do `200` o item sai da lista. Uma lacuna com organização envia sem seletor (AC 49)
+**C53** - Tela `Lacunas`: uma lacuna sem organização não envia a resposta enquanto nenhuma organização é escolhida no seletor; escolhida, envia `answer` e `organizationId`, e depois do `200` o item sai da lista. Uma lacuna com organização envia sem seletor (AC 49) ✓
 Proof: `npm --prefix src/web run test -- -t "gaps answer requires organization when missing"`
 
-**C54** - Tela `Lacunas`: dispensar abre confirmação com "A pergunta sai da lista e não volta"; cancelar não chama `dismiss`; confirmar chama (AC 50)
+**C54** - Tela `Lacunas`: dispensar abre confirmação com "A pergunta sai da lista e não volta"; cancelar não chama `dismiss`; confirmar chama (AC 50) ✓
 Proof: `npm --prefix src/web run test -- -t "gaps dismiss confirms"`
 
-**C55** - Tela `Lacunas`: mostra "Carregando lacunas…" enquanto a lista não responde; problem details na lista e na resposta mostram o `title` (AC 51)
+**C55** - Tela `Lacunas`: mostra "Carregando lacunas…" enquanto a lista não responde; problem details na lista e na resposta mostram o `title` (AC 51) ✓
 Proof: `npm --prefix src/web run test -- -t "gaps loading and error states"`
 
 ### S4 - Telas de organização · ~6 files · ~35 KB · ~9k
 
-**C56** - Tela `/organizations` com `[]` mostra "Crie sua primeira organização" e o formulário de criação; criar navega para `/organizations/{id}` (AC 16)
+**C56** - Tela `/organizations` com `[]` mostra "Crie sua primeira organização" e o formulário de criação; criar navega para `/organizations/{id}` (AC 16) ✓
 Proof: `npm --prefix src/web run test -- -t "organizations empty state and create"`
 
-**C57** - Tela `/organizations/{id}` lista os `fileName` dos documentos e os nomes das IAs; tem upload e o formulário de IA com o campo "Quando usar esta IA", que envia `routingDescription` e `organizationId` (AC 17)
+**C57** - Tela `/organizations/{id}` lista os `fileName` dos documentos e os nomes das IAs; tem upload e o formulário de IA com o campo "Quando usar esta IA", que envia `routingDescription` e `organizationId` (AC 17) ✓
 Proof: `npm --prefix src/web run test -- -t "organization page lists documents and assistants"`
 
-**C58** - Apagar organização abre confirmação que diz que IAs, documentos e lacunas serão apagados; cancelar não chama `DELETE`; confirmar chama `DELETE /api/organizations/{id}` (AC 18)
+**C58** - Apagar organização abre confirmação que diz que IAs, documentos e lacunas serão apagados; cancelar não chama `DELETE`; confirmar chama `DELETE /api/organizations/{id}` (AC 18) ✓
 Proof: `npm --prefix src/web run test -- -t "organization delete confirms"`
 
-**C59** - Tela `/organizations/{id}` sem IAs mostra "Nenhuma IA nesta organização"; `404` mostra o `title` do problem details; enquanto carrega mostra "Carregando..." (Observable `Organização`)
+**C59** - Tela `/organizations/{id}` sem IAs mostra "Nenhuma IA nesta organização"; `404` mostra o `title` do problem details; enquanto carrega mostra "Carregando..." (Observable `Organização`) ✓
 Proof: `npm --prefix src/web run test -- -t "organization page empty, loading and not found"`
 
-**C60** - Tela `/assistants/{id}` mostra o nome da organização com link para ela, a caixa de pergunta, e não mostra upload de documento; a resposta mostra as fontes (Observable `IA`)
+**C60** - Tela `/assistants/{id}` mostra o nome da organização com link para ela, a caixa de pergunta, e não mostra upload de documento; a resposta mostra as fontes (Observable `IA`) ✓
 Proof: `npm --prefix src/web run test -- -t "assistant page asks and links to organization"`
 
 ## Coverage
@@ -290,3 +290,6 @@ Cost: 1 classe de teste nova de migração. As linhas **não** vão para as guid
 
 - Leitura: código atual ≈ 122 KB ≈ 30k (Api + testes + web). Escrita: S1 ≈ 24k, S2 ≈ 10k, S3 ≈ 11k, S4 ≈ 9k = 54k. Saída de `dotnet test`/`vitest` ≈ 15k. Total ≈ 99k, abaixo do budget de 150k - um builder
 - Mechanism: one builder (dentro do budget, sem pergunta)
+- **Boundary:** C1-C29, C35-C50, C61, C62 fechados em `2580098` (Api); C30-C34, C51-C60 fechados no commit do web (este)
+- **Settled mid-build:** nenhum esclarecimento do usuário durante o build. Nenhuma door nova
+- **Abandoned:** heredocs de bash com `"""` (raw string do C#) quebravam o shell do harness; edições feitas via Write/script. Texto de ajuda dentro do `<label>` de "Quando usar esta IA" mudava o nome acessível do campo; virou `aria-describedby`

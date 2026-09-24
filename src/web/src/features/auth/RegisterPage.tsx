@@ -12,7 +12,7 @@ export function RegisterPage() {
       submitLabel="Criar conta"
       pending={register.isPending}
       error={register.error}
-      onSubmit={credentials => register.mutate(credentials, { onSuccess: () => navigate('/assistants') })}
+      onSubmit={credentials => register.mutate(credentials, { onSuccess: () => navigate('/organizations') })}
       footer={<>Já tem conta? <Link to="/login" className="underline">Entrar</Link></>}
     />
   )

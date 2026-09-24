@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, errorTitle } from '../../shared/api/client'
-import { useAsk, useAssistant, useDeleteDocument, useDocuments, useUploadDocument } from './api'
+import { AnswerView } from './AnswerView'
+import { useAsk, useAssistant } from './api'
 
 export function AssistantPage() {
   const { id = '' } = useParams()
@@ -12,7 +13,7 @@ export function AssistantPage() {
     return (
       <main className="p-6">
         <p>IA não encontrada.</p>
-        <Link to="/assistants" className="underline">Voltar</Link>
+        <Link to="/organizations" className="underline">Voltar</Link>
       </main>
     )
   if (assistant.isError) return <p role="alert" className="p-6 text-red-700">{errorTitle(assistant.error)}</p>
@@ -20,80 +21,24 @@ export function AssistantPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-6">
       <header>
-        <Link to="/assistants" className="text-sm underline">← Minhas IAs</Link>
+        <Link to={`/organizations/${assistant.data.organizationId}`} className="text-sm underline">
+          ← {assistant.data.organizationName}
+        </Link>
         <h1 className="mt-2 text-2xl font-semibold">{assistant.data.name}</h1>
         {assistant.data.instructions && <p className="mt-1 text-gray-600">{assistant.data.instructions}</p>}
       </header>
-      <Documents assistantId={id} />
       <Ask assistantId={id} />
     </main>
   )
 }
 
-function Documents({ assistantId }: { assistantId: string }) {
-  const documents = useDocuments(assistantId)
-  const upload = useUploadDocument(assistantId)
-  const remove = useDeleteDocument(assistantId)
-  const [file, setFile] = useState<File | null>(null)
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (file) upload.mutate(file)
-  }
-
-  const confirmDelete = (documentId: string, fileName: string) => {
-    if (window.confirm(`Apagar o documento "${fileName}"?`)) remove.mutate(documentId)
-  }
-
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Documentos</h2>
-      <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4 sm:flex-row sm:items-end">
-        <label className="flex flex-1 flex-col gap-2 text-sm font-medium text-gray-700">
-          Arquivo (PDF, TXT ou MD, até 10 MB)
-          <input
-            type="file"
-            accept=".pdf,.txt,.md"
-            onChange={e => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full cursor-pointer text-sm text-gray-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-medium file:text-white hover:file:bg-blue-700"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={upload.isPending || !file}
-          className="rounded bg-black px-5 py-2 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400"
-        >
-          {upload.isPending ? 'Processando...' : 'Enviar'}
-        </button>
-      </form>
-      {upload.isError && <p role="alert" className="text-red-700">{errorTitle(upload.error)}</p>}
-      {remove.isError && <p role="alert" className="text-red-700">{errorTitle(remove.error)}</p>}
-      {documents.isPending && <p>Carregando...</p>}
-      {documents.isError && <p role="alert" className="text-red-700">{errorTitle(documents.error)}</p>}
-      <ul className="flex flex-col gap-2">
-        {documents.data?.map(d => (
-          <li key={d.id} className="flex items-center justify-between rounded border p-2 text-sm">
-            <span>{d.fileName}</span>
-            <span className="flex items-center gap-4 text-gray-600">
-              {d.chunkCount} trecho(s)
-              <button onClick={() => confirmDelete(d.id, d.fileName)} aria-label={`Apagar documento ${d.fileName}`} className="text-red-700">
-                Apagar
-              </button>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
 function Ask({ assistantId }: { assistantId: string }) {
-  const ask = useAsk(assistantId)
+  const ask = useAsk()
   const [question, setQuestion] = useState('')
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    ask.mutate(question)
+    ask.mutate({ assistantId, question })
   }
 
   return (
@@ -109,21 +54,7 @@ function Ask({ assistantId }: { assistantId: string }) {
         </button>
       </form>
       {ask.isError && <p role="alert" className="text-red-700">{errorTitle(ask.error)}</p>}
-      {ask.data && (
-        <article className="rounded border p-4">
-          <p className="whitespace-pre-wrap">{ask.data.answer}</p>
-          {ask.data.sources.length > 0 && (
-            <>
-              <h3 className="mt-4 text-sm font-semibold">Fontes</h3>
-              <ul className="text-sm text-gray-600">
-                {ask.data.sources.map(s => (
-                  <li key={`${s.documentId}-${s.chunkIndex}`}>{s.fileName}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </article>
-      )}
+      {ask.data && <AnswerView answer={ask.data} />}
     </section>
   )
 }

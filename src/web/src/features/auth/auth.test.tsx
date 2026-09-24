@@ -34,7 +34,7 @@ function sessionAfterLogin() {
     handlers: [
       http.get('*/api/auth/manage/info', () =>
         loggedIn ? HttpResponse.json({ email: 'ana@test.local', isEmailConfirmed: false }) : new HttpResponse(null, { status: 401 })),
-      http.get('*/api/assistants', () => HttpResponse.json([])),
+      http.get('*/api/organizations', () => HttpResponse.json([])),
     ],
   }
 }
@@ -64,7 +64,7 @@ describe('login form states', () => {
   })
 
   // C45
-  it('login form states: success goes to /assistants', async () => {
+  it('login form states: success goes to /organizations', async () => {
     const session = sessionAfterLogin()
     server.use(...session.handlers, http.post('*/api/auth/login', () => {
       session.markLoggedIn()
@@ -74,8 +74,8 @@ describe('login form states', () => {
 
     await fillAndSubmit(user, 'Entrar')
 
-    expect(await screen.findByRole('heading', { name: 'Minhas IAs' })).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent('/assistants')
+    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/organizations')
   })
 })
 
@@ -98,7 +98,7 @@ describe('register form states', () => {
   })
 
   // C46
-  it('register form states: success goes to /assistants', async () => {
+  it('register form states: success goes to /organizations', async () => {
     const session = sessionAfterLogin()
     server.use(
       ...session.handlers,
@@ -112,7 +112,7 @@ describe('register form states', () => {
 
     await fillAndSubmit(user, 'Criar conta')
 
-    expect(await screen.findByRole('heading', { name: 'Minhas IAs' })).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent('/assistants')
+    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/organizations')
   })
 })
