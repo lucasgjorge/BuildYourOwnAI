@@ -22,4 +22,4 @@
 **Next step**: configurar `AI:OpenAI:ApiKey` e testar o fluxo real no navegador; depois planejar a etapa 2 (conversa)
 **Blockers**: chave da OpenAI (blocks go-live)
 **Uncommitted**: nada
-**Branch**: main (sem remoto)
+**Branch**: main -> origin (github.com/lucasgjorge/BuildYourOwnAI, privado)
