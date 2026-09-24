@@ -1,12 +1,15 @@
 # PRD - BuildYourOwnAI
 
-**Status:** rascunho · **Data:** 2026-09-23 · **Etapa atual:** 1 (RAG MVP)
+**Status:** rascunho · **Data:** 2026-09-24 · **Etapa atual:** 1 (RAG MVP) entregue, mais organizações, Jev e Lacunas
 
 ## 1. Visão
 
-Uma plataforma SaaS em que qualquer pessoa cria a **própria IA**: um assistente com nome e
-personalidade (instruções) que responde com base nos documentos que ela anexou, citando as fontes,
+Uma plataforma SaaS em que qualquer pessoa cria as **próprias IAs**: assistentes com nome e
+personalidade (instruções) que respondem com base nos documentos que ela anexou, citando as fontes,
 sem precisar programar nem entender de embeddings ou banco vetorial.
+
+As IAs vivem numa **organização**, que guarda os documentos. Num chat só, o **Jev** escolhe qual IA
+responde cada pergunta. O que nenhuma IA sabe responder vira uma **Lacuna** que o dono fecha uma vez.
 
 ## 2. Problema
 
@@ -27,23 +30,27 @@ antes da etapa de monetização.
 | Pequena equipe | base de conhecimento interna consultável | políticas de RH, runbooks |
 | Estudante | estudar a partir das próprias apostilas | PDFs de um curso |
 
-Na etapa 1 o "tenant" é o usuário individual. Times e organizações ficam para depois.
+O "tenant" continua sendo o usuário individual. Ele já agrupa as IAs em **organizações** (com dono
+único, AD-010). Membros e papéis nas organizações ficam para a etapa 5.
 
 ## 4. Proposta de valor
 
 1. Da conta criada à primeira resposta em minutos.
 2. Respostas fundamentadas **só** nos documentos daquela IA, com as fontes citadas.
-3. Várias IAs isoladas por usuário (ex.: "RH" e "Jurídico" não se misturam).
+3. Várias IAs por organização, cada uma com um jeito de responder, sobre os mesmos documentos. Organizações diferentes não se misturam.
+4. **Jev:** o usuário pergunta num chat só e o Jev encaminha para a IA certa. Cada resposta diz quem respondeu, e dá para perguntar a outra IA com um clique.
+5. **Lacunas:** a pergunta que nenhuma IA soube responder vira tarefa do dono, e a resposta dele passa a ser conhecimento da organização.
 
 ## 5. Roadmap por etapas
 
 | Etapa | Objetivo | Principais capacidades |
 | --- | --- | --- |
-| **1 - RAG MVP** (atual) | provar o ciclo criar → anexar → perguntar | login e-mail/senha; CRUD de IAs; upload PDF/TXT/MD até 10 MB; pergunta com resposta e fontes; UI mínima |
-| 2 - Conversa | experiência de chat real | histórico multi-turno, streaming, ingestão em background para arquivos grandes, mais formatos (DOCX, HTML, URL) |
-| 3 - Publicar | a IA sai da plataforma | link público, widget embutível, API key por IA |
+| **1 - RAG MVP** (entregue) | provar o ciclo criar → anexar → perguntar | login e-mail/senha; CRUD de IAs; upload PDF/TXT/MD até 10 MB; pergunta com resposta e fontes; UI mínima |
+| **1b - Organizações, Jev e Lacunas** (entregue) | várias IAs sobre o mesmo material, sem escolher na mão | organizações com documentos compartilhados; Jev por organização e global (roteador via OpenRouter); caixa de Lacunas; chat da organização como tela principal; página inicial pública |
+| 2 - Conversa | experiência de chat real | histórico persistido e multi-turno (hoje a thread vive só na tela), streaming, ingestão em background para arquivos grandes, mais formatos (DOCX, HTML, URL) |
+| 3 - Publicar | a IA sai da plataforma | link público do chat da organização (com o Jev), widget embutível, WhatsApp, API key |
 | 4 - Monetizar | receita | planos, quotas de uso (perguntas, armazenamento), cobrança |
-| 5 - Times | uso organizacional | organizações, papéis, IAs compartilhadas |
+| 5 - Times | uso organizacional | membros, papéis e convites nas organizações que já existem |
 
 ## 6. Escopo da etapa 1
 
@@ -102,3 +109,5 @@ Metas a validar com os primeiros usuários. Nenhuma tem baseline ainda.
 | Custo da OpenAI sem controle por usuário | rate limit na etapa 1; quotas na etapa 4 |
 | PDFs escaneados sem texto | rejeitados com 422; OCR fora do escopo |
 | Chave da OpenAI de produção | pendente - bloqueia o go-live, não o desenvolvimento |
+| Modelo da OpenRouter para o Jev | pendente - sem um modelo que devolva JSON, o Jev sempre pede ao usuário que escolha a IA |
+| Pergunta e descrições das IAs vão para um terceiro (OpenRouter) | só nome, organização e "Quando usar" vão ao roteador; nunca instruções nem documentos (jev-gaps, AC 27) |

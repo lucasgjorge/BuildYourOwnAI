@@ -1,7 +1,8 @@
 # BuildYourOwnAI
 
-SaaS onde o usuário constrói a própria IA: cria um assistente, anexa documentos e conversa com
-ele (RAG). Produto: [docs/PRD.md](docs/PRD.md). Decisões de projeto: [.specs/STATE.md](.specs/STATE.md).
+SaaS onde o usuário constrói as próprias IAs: cria uma organização, anexa documentos, cria IAs
+nela e conversa no chat da organização, onde o Jev escolhe qual IA responde (RAG). Perguntas sem
+resposta viram Lacunas. Produto: [docs/PRD.md](docs/PRD.md). Decisões de projeto: [.specs/STATE.md](.specs/STATE.md).
 
 ## tlc-spec-lean
 
@@ -13,8 +14,10 @@ budget: 150k
 ```
 src/BuildYourOwnAI.Api/          Minimal APIs, EF Core, Identity, IA
   Features/<Area>/<UseCase>.cs   um caso de uso por arquivo (endpoint + request/response + handler)
+  Common/                        o que 2+ slices usam: AskPipeline, DocumentIngestion, GapRecorder
   Infrastructure/                DbContext, migrations, registro de IA, current user
 src/web/                         React + TypeScript + Vite; `npm run build` gera o wwwroot da Api
+  src/features/<area>/           páginas, api hooks, types e testes por área; tokens visuais em src/index.css
 tests/BuildYourOwnAI.Api.Tests/  xUnit + WebApplicationFactory + Testcontainers (pgvector)
 src/web/src/**/*.test.tsx        Vitest + Testing Library + MSW
 docker-compose.yml               Postgres 17 + pgvector
