@@ -65,6 +65,17 @@ dotnet run --project src/BuildYourOwnAI.Api --launch-profile http
 
 A API fica em `http://localhost:5295`.
 
+Em `Development`, a API cria na primeira subida uma conta pronta para usar (se ela ainda não existir):
+
+| E-mail | Senha |
+| --- | --- |
+| `admin@buildyourownai.local` | `Admin#2026` |
+
+Os valores vêm de `DevSeed:AdminEmail` e `DevSeed:AdminPassword` em
+`src/BuildYourOwnAI.Api/appsettings.Development.json`. Apague a seção para não criar a conta. Ela é
+criada no startup, não numa migration, então nunca existe em produção. O produto ainda não tem
+papéis, então é uma conta comum.
+
 ### 4. Web (modo desenvolvimento)
 
 Em outro terminal:

@@ -31,7 +31,7 @@ dotnet build
 dotnet test                                           # precisa do Docker (Testcontainers)
 # Docker Desktop no Windows (contexto desktop-linux): no PowerShell, antes do dotnet test
 #   $env:DOCKER_HOST = "npipe://./pipe/dockerDesktopLinuxEngine"
-dotnet run --project src/BuildYourOwnAI.Api
+dotnet run --project src/BuildYourOwnAI.Api          # em Development cria admin@buildyourownai.local / Admin#2026
 cd src/web && npm install && npm run dev             # Vite em localhost:5173, proxy /api -> Api
 cd src/web && npm test
 dotnet ef migrations add <Name> --project src/BuildYourOwnAI.Api

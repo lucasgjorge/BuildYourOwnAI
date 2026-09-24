@@ -9,6 +9,7 @@ using BuildYourOwnAI.Api.Features.Organizations;
 using BuildYourOwnAI.Api.Infrastructure;
 using BuildYourOwnAI.Api.Infrastructure.Ai;
 using BuildYourOwnAI.Api.Infrastructure.Data;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,9 @@ builder.Services.AddDbContext<AppDbContext>(options => options
     .UseSnakeCaseNamingConvention());
 
 // Door 4: Identity endpoints with a same-origin session cookie.
+// A fixed name keeps session cookies valid when the app runs from another folder (keys are isolated per content root by default).
+builder.Services.AddDataProtection().SetApplicationName("BuildYourOwnAI");
+
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<AppUser>().AddEntityFrameworkStores<AppDbContext>();
 builder.Services.ConfigureApplicationCookie(cookie =>
@@ -56,6 +60,12 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await DevAdminSeed.SeedAsync(scope.ServiceProvider, app.Configuration, app.Logger);
 }
 
 app.UseExceptionHandler();
