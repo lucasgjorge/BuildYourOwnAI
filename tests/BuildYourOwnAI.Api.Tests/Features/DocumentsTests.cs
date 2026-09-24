@@ -21,7 +21,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_supported_file_returns_201_and_persists_chunks(string fileName)
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
         var seed = Guid.NewGuid().ToString("N");
         var bytes = fileName.EndsWith(".pdf")
             ? PdfWithText($"Clausula {seed} do contrato de teste")
@@ -51,7 +51,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_extension_is_checked_case_insensitively(string fileName, HttpStatusCode expected)
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
 
         var response = await UploadTextAsync(client, id, fileName, $"conteudo {Guid.NewGuid()}");
 
@@ -65,7 +65,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_size_limit_is_10485760_bytes(int size, HttpStatusCode expected)
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
         var head = Encoding.UTF8.GetBytes($"conteudo real {Guid.NewGuid()} ");
         var bytes = new byte[size];
         Array.Fill(bytes, (byte)' ');
@@ -84,8 +84,8 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_without_file_returns_400(string scenario)
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
-        var url = $"/api/assistants/{id}/documents";
+        var id = await CreateOrganizationAsync(client);
+        var url = $"/api/organizations/{id}/documents";
 
         var response = scenario switch
         {
@@ -104,7 +104,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_without_text_returns_422(string kind)
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
 
         var response = kind == "txt"
             ? await UploadTextAsync(client, id, "branco.txt", "   \n\n\t  \r\n ")
@@ -119,8 +119,8 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_duplicate_content_returns_409()
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
-        var other = await CreateAssistantAsync(client, "Outra");
+        var id = await CreateOrganizationAsync(client);
+        var other = await CreateOrganizationAsync(client, "Outra");
         var text = $"conteudo identico {Guid.NewGuid()}";
 
         Assert.Equal(HttpStatusCode.Created, (await UploadTextAsync(client, id, "a.txt", text)).StatusCode);
@@ -134,7 +134,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Upload_embedding_failure_returns_502_and_persists_nothing()
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
         var text = LongText(Guid.NewGuid().ToString("N")) + " " + FakeAiTriggers.FailEmbedding;
 
         var response = await UploadTextAsync(client, id, "falha.txt", text);
@@ -142,7 +142,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.DoesNotContain(FakeAiTriggers.ProviderSecretMessage, await response.Content.ReadAsStringAsync());
         Assert.Equal(0, await DocumentCountAsync(id));
-        Assert.Equal(0, await ChunkCountForAssistantAsync(id));
+        Assert.Equal(0, await ChunkCountForOrganizationAsync(id));
     }
 
     // C19
@@ -150,11 +150,11 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task List_returns_newest_first()
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
         var first = await UploadOkAsync(client, id, "primeiro.txt", $"um {Guid.NewGuid()}");
         var second = await UploadOkAsync(client, id, "segundo.txt", $"dois {Guid.NewGuid()}");
 
-        var response = await client.GetAsync($"/api/assistants/{id}/documents");
+        var response = await client.GetAsync($"/api/organizations/{id}/documents");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var list = await JsonAsync(response);
@@ -171,28 +171,28 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Delete_returns_204_and_removes_from_retrieval()
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
         var removed = await UploadOkAsync(client, id, "remover.txt", "girafa girafa girafa savana");
         await UploadOkAsync(client, id, "manter.txt", "elefante elefante savana");
 
-        var response = await client.DeleteAsync($"/api/assistants/{id}/documents/{removed}");
+        var response = await client.DeleteAsync($"/api/organizations/{id}/documents/{removed}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(0, await ScalarAsync("select count(*) from chunks where document_id = @d", ("d", removed)));
-        var ask = await JsonAsync(await AskAsync(client, id, "girafa"));
+        var ask = await JsonAsync(await AskAsync(client, await CreateAssistantInAsync(client, id), "girafa"));
         Assert.DoesNotContain(ask.GetProperty("sources").EnumerateArray(), s => s.GetProperty("documentId").GetGuid() == removed);
     }
 
     // C21
     [Fact]
-    public async Task Delete_document_of_other_assistant_returns_404()
+    public async Task Delete_document_of_other_organization_returns_404()
     {
         var client = await NewUserClientAsync();
-        var a = await CreateAssistantAsync(client, "A");
-        var b = await CreateAssistantAsync(client, "B");
+        var a = await CreateOrganizationAsync(client, "A");
+        var b = await CreateOrganizationAsync(client, "B");
         var docOfB = await UploadOkAsync(client, b, "b.txt", $"do B {Guid.NewGuid()}");
 
-        var response = await client.DeleteAsync($"/api/assistants/{a}/documents/{docOfB}");
+        var response = await client.DeleteAsync($"/api/organizations/{a}/documents/{docOfB}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal(1, await DocumentCountAsync(b));
@@ -203,7 +203,7 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Concurrent_duplicate_uploads_yield_one_201_one_409()
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var id = await CreateOrganizationAsync(client);
         // The rendezvous marker holds both requests inside embedding generation, i.e. after the duplicate pre-check,
         // so only the unique index can decide which one wins.
         var text = $"{FakeAiTriggers.Rendezvous} {LongText(Guid.NewGuid().ToString("N"))}";
@@ -215,5 +215,46 @@ public sealed class DocumentsTests(ApiFactory factory) : ApiTestBase(factory)
         var statuses = results.Select(r => r.StatusCode).OrderBy(s => s).ToArray();
         Assert.Equal([HttpStatusCode.Created, HttpStatusCode.Conflict], statuses);
         Assert.Equal(1, await DocumentCountAsync(id));
+    }
+
+    // C13
+    [Fact]
+    public async Task Same_content_is_unique_per_organization()
+    {
+        var client = await NewUserClientAsync();
+        var acme = await CreateOrganizationAsync(client, "ACME");
+        var globex = await CreateOrganizationAsync(client, "Globex");
+        var text = $"manual compartilhado {Guid.NewGuid()}";
+
+        Assert.Equal(HttpStatusCode.Created, (await UploadTextAsync(client, acme, "manual.txt", text)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await UploadTextAsync(client, acme, "copia.txt", text)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await UploadTextAsync(client, globex, "manual.txt", text)).StatusCode);
+        Assert.Equal(1, await DocumentCountAsync(acme));
+        Assert.Equal(1, await DocumentCountAsync(globex));
+    }
+
+    // C15
+    [Fact]
+    public async Task Old_assistant_document_routes_are_gone()
+    {
+        var client = await NewUserClientAsync();
+        var (organization, assistant) = await NewAssistantAsync(client);
+        var document = await UploadOkAsync(client, organization, "a.txt", $"conteudo {Guid.NewGuid()}");
+        var form = new MultipartFormDataContent { { new ByteArrayContent("x"u8.ToArray()), "file", "x.txt" } };
+
+        var responses = new[]
+        {
+            await client.PostAsync($"/api/assistants/{assistant}/documents", form),
+            await client.GetAsync($"/api/assistants/{assistant}/documents"),
+            await client.DeleteAsync($"/api/assistants/{assistant}/documents/{document}"),
+            await client.GetAsync("/api/assistants"),
+        };
+
+        foreach (var response in responses)
+        {
+            Assert.Contains(response.StatusCode, new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        }
+        Assert.Equal(1, await DocumentCountAsync(organization));
     }
 }

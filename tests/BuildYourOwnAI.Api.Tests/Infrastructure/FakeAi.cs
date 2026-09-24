@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 
@@ -12,6 +13,15 @@ public static class FakeAiTriggers
     public const string ProviderSecretMessage = "provider-secret-message-7f3a";
     // Two embedding calls containing this marker wait for each other before returning (forces a race).
     public const string Rendezvous = "__RENDEZVOUS__";
+
+    // The answering chat replies with the structured {answer, found} JSON when the prompt contains one of these.
+    public const string NotFound = "__NOT_FOUND__";
+    public const string Found = "__FOUND__";
+    public const string NotFoundAnswer = "não sei";
+    public const string FoundAnswer = "resposta-9c1e";
+
+    /// <summary>Router behaviour, put in the question: __ROUTE_2__, __ROUTE_LOW2__, __ROUTE_NONE__, __ROUTE_NONELOW__, __ROUTE_THROW__, __ROUTE_TEXT__.</summary>
+    public static string Route(object behaviour) => $"__ROUTE_{behaviour}__";
 }
 
 /// <summary>Deterministic bag-of-words embedding: same text, same vector; shared words, smaller cosine distance.</summary>
@@ -94,12 +104,66 @@ public sealed class FakeChatClient : IChatClient
         if (list.Any(m => m.Text.Contains(FakeAiTriggers.FailChat)))
             throw new HttpRequestException(FakeAiTriggers.ProviderSecretMessage);
 
-        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "fake answer")));
+        var text = string.Join("\n", list.Select(m => m.Text));
+        var reply = text.Contains(FakeAiTriggers.NotFound)
+            ? JsonSerializer.Serialize(new { answer = FakeAiTriggers.NotFoundAnswer, found = false })
+            : text.Contains(FakeAiTriggers.Found)
+                ? JsonSerializer.Serialize(new { answer = FakeAiTriggers.FoundAnswer, found = true })
+                : "fake answer";
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
     }
+
+    public bool ReceivedCallContaining(string marker) => Calls.Any(c => c.Any(m => m.Text.Contains(marker)));
 
     /// <summary>All text the model received in the call whose messages contain <paramref name="marker"/>.</summary>
     public string PromptContaining(string marker) =>
         Calls.Select(c => string.Join("\n", c.Select(m => m.Text))).Single(t => t.Contains(marker));
+
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
+}
+
+/// <summary>Stands in for the OpenRouter client behind the "router" key; replies by the __ROUTE_x__ marker in the question.</summary>
+public sealed partial class FakeRouterClient : IChatClient
+{
+    public const string OutputMarker = "router-output-5d1c";
+
+    public ConcurrentQueue<IReadOnlyList<ChatMessage>> Calls { get; } = new();
+
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        var list = messages.ToList();
+        Calls.Enqueue(list);
+        var text = string.Join("\n", list.Select(m => m.Text));
+        var behaviour = Marker().Match(text) is { Success: true } m ? m.Groups[1].Value : "1";
+
+        var reply = behaviour switch
+        {
+            "THROW" => throw new HttpRequestException(FakeAiTriggers.ProviderSecretMessage),
+            "TEXT" => $"eu escolheria a primeira {OutputMarker}",
+            "NONE" => Decision(null, true),
+            "NONELOW" => Decision(null, false),
+            _ when behaviour.StartsWith("LOW") => Decision(int.Parse(behaviour[3..]), false),
+            _ => Decision(int.Parse(behaviour), true),
+        };
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
+    }
+
+    private static string Decision(int? choice, bool confident) =>
+        JsonSerializer.Serialize(new { choice, confident, reason = OutputMarker });
+
+    public string PromptContaining(string marker) =>
+        Calls.Select(c => string.Join("\n", c.Select(m => m.Text))).Single(t => t.Contains(marker));
+
+    public bool ReceivedCallContaining(string marker) => Calls.Any(c => c.Any(m => m.Text.Contains(marker)));
+
+    [GeneratedRegex(@"__ROUTE_([A-Z]*\d*)__")]
+    private static partial Regex Marker();
 
     public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>

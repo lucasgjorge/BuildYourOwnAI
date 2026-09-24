@@ -10,7 +10,7 @@ public static class DeleteAssistant
 
     private static async Task<Results<NoContent, ProblemHttpResult>> Handle(Guid id, AppDbContext db, CancellationToken ct)
     {
-        // Documents and chunks go with it through ON DELETE CASCADE (door 3).
+        // Documents belong to the organization and stay; its gaps stay with assistant_id set to null (door 6).
         var deleted = await db.Assistants.Where(a => a.Id == id).ExecuteDeleteAsync(ct);
 
         return deleted == 0 ? Problems.AssistantNotFound() : TypedResults.NoContent();

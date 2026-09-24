@@ -24,11 +24,13 @@ no código que mudou e responder dúvidas de "onde/como coloco isto". Você não
 
 ### A. Isolamento entre usuários (bloqueante)
 
-- Toda query sobre `Assistant` passa pelo query filter de dono. `IgnoreQueryFilters()` só é
-  aceito com um comentário de justificativa e fora de handlers de request.
-- `Document` e `Chunk` nunca são buscados por id isolado. Primeiro resolve-se o `Assistant`
-  (filtrado); depois filtra-se por `AssistantId` dele.
-- A busca vetorial de chunks sempre tem `WHERE assistant_id = @assistantId`, inclusive em SQL cru.
+- A raiz de posse é `Organization` (AD-010). Toda query sobre `Organization`, `Assistant`, `Document`,
+  `Chunk` e `Gap` passa pelo query filter de dono. `IgnoreQueryFilters()` só é aceito com um
+  comentário de justificativa e fora de handlers de request.
+- `Document` e `Chunk` nunca são buscados por id isolado. Primeiro resolve-se a `Organization`
+  (ou o `Assistant`, que leva à organização) pelo filtro; depois filtra-se por `OrganizationId`.
+- A busca vetorial de chunks sempre filtra pela organização da IA (`documents.organization_id`),
+  inclusive em SQL cru. SQL cru sobre `gaps` sempre grava/filtra `owner_id` do usuário atual.
 - Recurso inexistente ou de outro usuário → `404`. Nunca `403` (revela existência).
 - O id do usuário vem de `ICurrentUser`/claims, nunca do corpo da requisição ou da query string.
 
@@ -56,7 +58,8 @@ no código que mudou e responder dúvidas de "onde/como coloco isto". Você não
 ### D. IA e RAG (AD-004, AD-005)
 
 - Handlers dependem só de `IChatClient` e `IEmbeddingGenerator<string, Embedding<float>>`.
-  Qualquer `using OpenAI` fora do registro de DI é achado.
+  Qualquer `using OpenAI` fora do registro de DI é achado. O roteador do Jev usa o `IChatClient`
+  keyed `"router"` (AD-011); ele nunca recebe instruções de IA nem conteúdo de documento.
 - Nome de modelo e dimensão vêm de configuração/constante única. Número `1536` espalhado é achado.
 - Embeddings em lote (`GenerateAsync` com a lista de chunks), nunca um request por chunk num loop.
 - O prompt enviado ao chat monta instruções do assistente + trechos recuperados + pergunta, e só isso.

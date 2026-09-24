@@ -13,101 +13,101 @@ Comandos de prova:
 Checks do rag-mvp afetados por este plano (o contrato mudou por decisão aprovada, as asserções não enfraquecem):
 
 - Re-apontados para as rotas novas, mesmas asserções: C6 (lista de rotas protegidas passa a ser a deste plano), C10 (rotas `{id}` × {outro, inexistente}, agora também em `/api/organizations/{id}*`), C12-C20, C37, C40 (upload em `/api/organizations/{id}/documents`), C22-C28 (ask cria a IA dentro de uma organização)
-- Substituídos: C9 (`GET /api/assistants` sai) por C3 deste plano. C11 (apagar IA apagava documentos) por C12 e C45 deste plano: documentos pertencem à organização
+- Substituídos: C9 (`GET /api/assistants` sai) por C3 deste plano. C11 (apagar IA apagava documentos) por C12 e C49 deste plano: documentos pertencem à organização. C44 (`documentCount` em `GET /api/assistants/{id}`) por C9 deste plano, cujo Surface não tem mais esse campo
 - Telas do rag-mvp `/assistants` e `/assistants/{id}`: C30-C35, C47-C49, C51 migram para as telas `Organizações`/`Organização`/`IA` e são reprovadas por C16-C18 e C60 deste plano
 
 ## Checks
 
 ### S1 - Organizações e documentos compartilhados · ~22 files · ~95 KB · ~24k
 
-**C1** - `POST /api/organizations` com `name` de 1 e de 100 caracteres (com espaços nas pontas) responde `201`, `Location: /api/organizations/{id}` e corpo com `id`, `name` sem espaços nas pontas e `createdAt` (AC 1)
+**C1** - `POST /api/organizations` com `name` de 1 e de 100 caracteres (com espaços nas pontas) responde `201`, `Location: /api/organizations/{id}` e corpo com `id`, `name` sem espaços nas pontas e `createdAt` (AC 1) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~OrganizationsTests.Create_valid_returns_201"`
 
-**C2** - `name` `""`, `"   "` e com 101 caracteres respondem `400` com `errors.name` (AC 2)
+**C2** - `name` `""`, `"   "` e com 101 caracteres respondem `400` com `errors.name` (AC 2) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~OrganizationsTests.Create_invalid_returns_400"`
 
-**C3** - `GET /api/organizations` devolve `[]` para usuário novo; depois de criar A e B e, em A, 2 IAs e 1 documento, devolve `[B, A]` com `assistantCount` 0/2, `documentCount` 0/1, `name` e `createdAt` iguais aos da criação, e nunca as de outro usuário (AC 3)
+**C3** - `GET /api/organizations` devolve `[]` para usuário novo; depois de criar A e B e, em A, 2 IAs e 1 documento, devolve `[B, A]` com `assistantCount` 0/2, `documentCount` 0/1, `name` e `createdAt` iguais aos da criação, e nunca as de outro usuário (AC 3) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~OrganizationsTests.List_returns_only_own_newest_first_with_counts"`
 
-**C4** - `GET /api/organizations/{id}` do dono responde `200` com `id`, `name`, `createdAt`, `documentCount` e `assistants[{id, name, routingDescription}]` iguais ao que foi criado (Surface)
+**C4** - `GET /api/organizations/{id}` do dono responde `200` com `id`, `name`, `createdAt`, `documentCount` e `assistants[{id, name, routingDescription}]` iguais ao que foi criado (Surface) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~OrganizationsTests.Get_returns_assistants_and_document_count"`
 
-**C5** - Nas 5 rotas `/api/organizations/{id}*` (`GET`, `DELETE`, `POST documents`, `GET documents`, `DELETE documents/{documentId}`), um id de outro usuário e um id inexistente respondem `404` problem details, e a organização alheia continua com os mesmos documentos (AC 4)
+**C5** - Nas 5 rotas `/api/organizations/{id}*` (`GET`, `DELETE`, `POST documents`, `GET documents`, `DELETE documents/{documentId}`), um id de outro usuário e um id inexistente respondem `404` problem details, e a organização alheia continua com os mesmos documentos (AC 4) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~OrganizationsTests.Foreign_or_missing_organization_returns_404"`
 
-**C6** - `POST /api/assistants` com `organizationId` próprio, `name`, `instructions` e `routingDescription` de 500 caracteres responde `201` com `id`, `organizationId`, `name`, `instructions`, `routingDescription`, `createdAt`; com `routingDescription` ausente responde `201` com `routingDescription = null` (AC 5)
+**C6** - `POST /api/assistants` com `organizationId` próprio, `name`, `instructions` e `routingDescription` de 500 caracteres responde `201` com `id`, `organizationId`, `name`, `instructions`, `routingDescription`, `createdAt`; com `routingDescription` ausente responde `201` com `routingDescription = null` (AC 5) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AssistantsTests.Create_valid_returns_201_with_location"`
 
-**C7** - `POST /api/assistants` sem `organizationId` responde `400` com `errors.organizationId`; `routingDescription` com 501 caracteres responde `400` com `errors.routingDescription`; as validações de `name`/`instructions` do rag-mvp continuam (AC 6, AC 8)
+**C7** - `POST /api/assistants` sem `organizationId` responde `400` com `errors.organizationId`; `routingDescription` com 501 caracteres responde `400` com `errors.routingDescription`; as validações de `name`/`instructions` do rag-mvp continuam (AC 6, AC 8) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AssistantsTests.Create_invalid_returns_400_keyed_by_field"`
 
-**C8** - `POST /api/assistants` com `organizationId` de outro usuário e com um id inexistente responde `404`, e o número de IAs no banco não muda (AC 7)
+**C8** - `POST /api/assistants` com `organizationId` de outro usuário e com um id inexistente responde `404`, e o número de IAs no banco não muda (AC 7) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AssistantsTests.Create_in_foreign_or_missing_organization_returns_404"`
 
-**C9** - `GET /api/assistants/{id}` do dono responde `200` com `id`, `organizationId`, `organizationName`, `name`, `instructions`, `routingDescription` e `createdAt` iguais aos da criação (Surface)
+**C9** - `GET /api/assistants/{id}` do dono responde `200` com `id`, `organizationId`, `organizationName`, `name`, `instructions`, `routingDescription` e `createdAt` iguais aos da criação (Surface) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AssistantsTests.Get_returns_organization_and_routing_description"`
 
-**C10** - Um documento enviado uma vez à organização aparece com o mesmo `documentId` nas `sources` de duas IAs diferentes dessa organização (AC 9)
+**C10** - Um documento enviado uma vez à organização aparece com o mesmo `documentId` nas `sources` de duas IAs diferentes dessa organização (AC 9) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AskTests.Assistants_of_same_organization_share_documents"`
 
-**C11** - Com duas organizações do mesmo usuário, cada uma com um documento, o ask a uma IA da organização A nunca cita o documento de B, mesmo quando o documento de B é mais parecido com a pergunta (AC 10, door 1)
+**C11** - Com duas organizações do mesmo usuário, cada uma com um documento, o ask a uma IA da organização A nunca cita o documento de B, mesmo quando o documento de B é mais parecido com a pergunta (AC 10, door 1) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AskTests.Retrieves_only_from_own_organization"`
 
-**C12** - `DELETE /api/organizations/{id}` responde `204` e no banco não resta linha de `assistants`, `documents`, `chunks` nem `gaps` dessa organização; as de outra organização continuam (AC 13)
+**C12** - `DELETE /api/organizations/{id}` responde `204` e no banco não resta linha de `assistants`, `documents`, `chunks` nem `gaps` dessa organização; as de outra organização continuam (AC 13) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~OrganizationsTests.Delete_returns_204_and_cascades"`
 
-**C13** - O mesmo conteúdo enviado duas vezes à mesma organização responde `201` e depois `409`; enviado a outra organização responde `201` (AC 11)
+**C13** - O mesmo conteúdo enviado duas vezes à mesma organização responde `201` e depois `409`; enviado a outra organização responde `201` (AC 11) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~DocumentsTests.Same_content_is_unique_per_organization"`
 
-**C14** - Os testes de upload do rag-mvp (C12-C20, C37: formatos, `413`/`415`/`422`/`400`/`502`, lista, apagar, corrida de duplicata) passam contra `/api/organizations/{id}/documents` sem mudar as asserções (AC 12)
+**C14** - Os testes de upload do rag-mvp (C12-C20, C37: formatos, `413`/`415`/`422`/`400`/`502`, lista, apagar, corrida de duplicata) passam contra `/api/organizations/{id}/documents` sem mudar as asserções (AC 12) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~DocumentsTests"`
-Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~DocumentsTests.Concurrent_duplicate_upload_yields_one_201_one_409"`
+Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~DocumentsTests.Concurrent_duplicate_uploads_yield_one_201_one_409"`
 
-**C15** - `POST /api/assistants/{id}/documents`, `GET /api/assistants/{id}/documents`, `DELETE /api/assistants/{id}/documents/{x}` e `GET /api/assistants` respondem `404` (ou `405` para o método sem rota) com `application/problem+json` (AC 15)
+**C15** - `POST /api/assistants/{id}/documents`, `GET /api/assistants/{id}/documents`, `DELETE /api/assistants/{id}/documents/{x}` e `GET /api/assistants` respondem `404` (ou `405` para o método sem rota) com `application/problem+json` (AC 15) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~DocumentsTests.Old_assistant_document_routes_are_gone"`
 
-**C16** - Migração: num banco migrado até `InitialCreate` com dois usuários, três IAs (uma sem documento) e dois documentos com chunks, migrar até o fim cria 3 organizações com o nome e o dono de cada IA, cada IA com `organization_id` da sua, cada documento na organização da IA de origem, com os mesmos `id` de documento e chunks intactos (AC 14, door 1)
+**C16** - Migração: num banco migrado até `InitialCreate` com dois usuários, três IAs (uma sem documento) e dois documentos com chunks, migrar até o fim cria 3 organizações com o nome e o dono de cada IA, cada IA com `organization_id` da sua, cada documento na organização da IA de origem, com os mesmos `id` de documento e chunks intactos (AC 14, door 1) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~MigrationTests.Backfill_creates_one_organization_per_assistant"`
 
-**C17** - Schema final: índice único `(organization_id, content_sha256)` em `documents`; `documents.assistant_id` e `assistants.owner_id` não existem; `assistants.organization_id` e `documents.organization_id` NOT NULL com `ON DELETE CASCADE`; `assistants.routing_description` `varchar(500)` nula (door 1, door 3)
+**C17** - Schema final: índice único `(organization_id, content_sha256)` em `documents`; `documents.assistant_id` e `assistants.owner_id` não existem; `assistants.organization_id` e `documents.organization_id` NOT NULL com `ON DELETE CASCADE`; `assistants.routing_description` `varchar(500)` nula (door 1, door 3) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~MigrationTests.Schema_has_organization_ownership_shape"`
 
 ### S2 - Jev · ~8 files · ~40 KB · ~10k
 
-**C18** - Com IAs do usuário em duas organizações, uma sem `routingDescription` e outra com `routingDescription = "   "`, o prompt recebido pelo cliente `router` contém o nome, a organização e a descrição só das IAs com descrição não vazia, e nunca IAs de outro usuário (AC 19)
+**C18** - Com IAs do usuário em duas organizações, uma sem `routingDescription` e outra com `routingDescription = "   "`, o prompt recebido pelo cliente `router` contém o nome, a organização e a descrição só das IAs com descrição não vazia, e nunca IAs de outro usuário (AC 19) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Router_sees_only_own_assistants_with_description"`
 
-**C19** - Com o roteador devolvendo `{"choice": 2, "confident": true}`, `POST /api/jev/ask` responde `200` com `kind = "answered"`, `assistant.id`/`name`/`organizationName` da 2ª IA oferecida, `answer` e `found` do chat padrão, `sources` com o documento da organização dela, e `alternatives` com as demais elegíveis (até 3, sem a escolhida) (AC 20)
+**C19** - Com o roteador devolvendo `{"choice": 2, "confident": true}`, `POST /api/jev/ask` responde `200` com `kind = "answered"`, `assistant.id`/`name`/`organizationName` da 2ª IA oferecida, `answer` e `found` do chat padrão, `sources` com o documento da organização dela, e `alternatives` com as demais elegíveis (até 3, sem a escolhida) (AC 20) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Confident_choice_answers_through_chosen_assistant"`
 
-**C20** - Com 5 IAs elegíveis e escolha confiante, `alternatives` tem exatamente 3 itens (AC 20)
+**C20** - Com 5 IAs elegíveis e escolha confiante, `alternatives` tem exatamente 3 itens (AC 20) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Alternatives_are_capped_at_three"`
 
-**C21** - Com `{"choice": 1, "confident": false}`, responde `200` com `kind = "clarify"`, `candidates` de 1 a 3 IAs elegíveis, sem `answer`, e o chat padrão não recebe nenhuma chamada (AC 21)
+**C21** - Com `{"choice": 1, "confident": false}`, responde `200` com `kind = "clarify"`, `candidates` de 1 a 3 IAs elegíveis, sem `answer`, e o chat padrão não recebe nenhuma chamada (AC 21) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Low_confidence_returns_clarify_without_answering"`
 
-**C22** - Com `{"choice": null, "confident": true}`, responde `200` com `kind = "noMatch"` e existe 1 lacuna aberta do usuário com aquela pergunta, `organization_id` e `assistant_id` nulos (AC 22)
+**C22** - Com `{"choice": null, "confident": true}`, responde `200` com `kind = "noMatch"` e existe 1 lacuna aberta do usuário com aquela pergunta, `organization_id` e `assistant_id` nulos (AC 22) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.No_match_records_gap_without_organization"`
 
-**C23** - Para cada falha do roteador - exceção do cliente, texto que não é JSON, `choice = 0`, `choice = N+1` - responde `200` com `kind = "clarify"` e `candidates` = as IAs elegíveis ordenadas por nome, no máximo 5 (com 6 elegíveis, 5 itens) (AC 23, door 5)
+**C23** - Para cada falha do roteador - exceção do cliente, texto que não é JSON, `choice = 0`, `choice = N+1` - responde `200` com `kind = "clarify"` e `candidates` = as IAs elegíveis ordenadas por nome, no máximo 5 (com 6 elegíveis, 5 itens) (AC 23, door 5) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Router_failure_falls_back_to_clarify"`
 
-**C24** - Sem nenhuma IA elegível (usuário sem IAs, e usuário só com IAs sem descrição), responde `422` problem details e o cliente `router` não recebe chamada (AC 24)
+**C24** - Sem nenhuma IA elegível (usuário sem IAs, e usuário só com IAs sem descrição), responde `422` problem details e o cliente `router` não recebe chamada (AC 24) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.No_eligible_assistant_returns_422"`
 
-**C25** - `question` vazia, só espaços e com 2001 caracteres responde `400` com `errors.question`; com 2000 caracteres não responde `400` (AC 25)
+**C25** - `question` vazia, só espaços e com 2001 caracteres responde `400` com `errors.question`; com 2000 caracteres não responde `400` (AC 25) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Question_bounds"`
 
-**C26** - 10 perguntas em `/api/assistants/{id}/ask` + 10 em `/api/jev/ask` passam; a 21ª (em `/api/jev/ask`) responde `429` problem details (AC 26)
+**C26** - 10 perguntas em `/api/assistants/{id}/ask` + 10 em `/api/jev/ask` passam; a 21ª (em `/api/jev/ask`) responde `429` problem details (AC 26) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Shares_rate_limit_with_ask"`
 
-**C27** - Com instruções e documento contendo marcadores únicos, nenhuma mensagem recebida pelo cliente `router` contém o marcador das instruções nem o do documento (AC 27)
+**C27** - Com instruções e documento contendo marcadores únicos, nenhuma mensagem recebida pelo cliente `router` contém o marcador das instruções nem o do documento (AC 27) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Router_never_receives_instructions_or_documents"`
 
-**C28** - Quando o ask depois do roteamento falha no chat padrão, `POST /api/jev/ask` responde `502` problem details sem a mensagem do provedor (Surface)
+**C28** - Quando o ask depois do roteamento falha no chat padrão, `POST /api/jev/ask` responde `502` problem details sem a mensagem do provedor (Surface) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~JevTests.Answer_failure_after_routing_returns_502"`
 
-**C29** - Sem `AI:OpenRouter:ApiKey`, a app sobe e `POST /api/jev/ask` com IA elegível responde `200` `kind = "clarify"` (door 4)
+**C29** - Sem `AI:OpenRouter:ApiKey`, a app sobe e `POST /api/jev/ask` com IA elegível responde `200` `kind = "clarify"` (door 4) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~UnconfiguredAiTests.Jev_without_router_key_falls_back_to_clarify"`
 
 **C30** - Tela `Jev`, `kind=answered`: mostra "Respondido por Direto · ACME", a resposta, e um botão por alternativa; clicar em "Professor" chama `POST /api/assistants/{professorId}/ask` com a mesma pergunta e passa a mostrar "Respondido por Professor · ACME" e a nova resposta (AC 28)
@@ -127,52 +127,52 @@ Proof: `npm --prefix src/web run test -- -t "jev loading and error states"`
 
 ### S3 - Lacunas · ~10 files · ~45 KB · ~11k
 
-**C35** - Com o chat devolvendo `{"answer": "não sei", "found": false}`, `POST /api/assistants/{id}/ask` responde `200` com `answer = "não sei"`, `found = false`, e existe 1 lacuna aberta com `organization_id` e `assistant_id` daquela IA, `ask_count = 1` e a pergunta como enviada; com `found: true` responde `found = true` e não cria lacuna (AC 33, door 6)
+**C35** - Com o chat devolvendo `{"answer": "não sei", "found": false}`, `POST /api/assistants/{id}/ask` responde `200` com `answer = "não sei"`, `found = false`, e existe 1 lacuna aberta com `organization_id` e `assistant_id` daquela IA, `ask_count = 1` e a pergunta como enviada; com `found: true` responde `found = true` e não cria lacuna (AC 33, door 6) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Unanswered_question_opens_gap"`
 
-**C36** - Com o roteador escolhendo uma IA e o chat devolvendo `found: false`, `POST /api/jev/ask` responde `kind = "answered"`, `found = false` e cria a lacuna com a organização e a IA escolhidas (AC 33)
+**C36** - Com o roteador escolhendo uma IA e o chat devolvendo `found: false`, `POST /api/jev/ask` responde `kind = "answered"`, `found = false` e cria a lacuna com a organização e a IA escolhidas (AC 33) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Jev_routed_unanswered_question_opens_gap"`
 
-**C37** - "Qual o horário?" e depois "  QUAL o   horário? " sem resposta na mesma organização resultam em 1 lacuna com `askCount = 2` e `lastAskedAt` maior que `firstAskedAt`; a mesma pergunta numa outra organização cria outra lacuna; duas `noMatch` iguais do Jev resultam em 1 lacuna sem organização com `askCount = 2` (AC 34)
+**C37** - "Qual o horário?" e depois "  QUAL o   horário? " sem resposta na mesma organização resultam em 1 lacuna com `askCount = 2` e `lastAskedAt` maior que `firstAskedAt`; a mesma pergunta numa outra organização cria outra lacuna; duas `noMatch` iguais do Jev resultam em 1 lacuna sem organização com `askCount = 2` (AC 34) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Same_normalized_question_increments_count"`
 
-**C38** - Duas perguntas iguais sem resposta disparadas ao mesmo tempo resultam em exatamente 1 lacuna aberta com `ask_count = 2` (AC 34, door 6)
+**C38** - Duas perguntas iguais sem resposta disparadas ao mesmo tempo resultam em exatamente 1 lacuna aberta com `ask_count = 2` (AC 34, door 6) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Concurrent_same_question_yields_one_gap"`
 
-**C39** - Com o chat devolvendo texto que não é o JSON `{answer, found}`, o ask responde `200` com o texto bruto em `answer`, `found = true`, e nenhuma lacuna é criada (AC 35)
+**C39** - Com o chat devolvendo texto que não é o JSON `{answer, found}`, o ask responde `200` com o texto bruto em `answer`, `found = true`, e nenhuma lacuna é criada (AC 35) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Unstructured_chat_reply_is_answered_without_gap"`
 
-**C40** - `GET /api/gaps` devolve só as lacunas abertas do usuário, com `id`, `question`, `askCount`, `firstAskedAt`, `lastAskedAt`, `organization{id, name}` e `assistant{id, name}` (nulos quando não há), ordenadas por `askCount` decrescente e depois `lastAskedAt` decrescente; respondidas, dispensadas e de outro usuário não aparecem (AC 36)
+**C40** - `GET /api/gaps` devolve só as lacunas abertas do usuário, com `id`, `question`, `askCount`, `firstAskedAt`, `lastAskedAt`, `organization{id, name}` e `assistant{id, name}` (nulos quando não há), ordenadas por `askCount` decrescente e depois `lastAskedAt` decrescente; respondidas, dispensadas e de outro usuário não aparecem (AC 36) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.List_returns_own_open_gaps_most_asked_first"`
 
-**C41** - `POST /api/gaps/{id}/answer` com `answer` de 1 e de 4000 caracteres responde `200` com `id`, `status = "answered"` e `documentId`; esse documento aparece em `GET /api/organizations/{orgId}/documents` com `fileName` = `Lacuna - ` + os primeiros 60 caracteres da pergunta + `.md`, e a lacuna sai de `GET /api/gaps` (AC 37, door 7)
+**C41** - `POST /api/gaps/{id}/answer` com `answer` de 1 e de 4000 caracteres responde `200` com `id`, `status = "answered"` e `documentId`; esse documento aparece em `GET /api/organizations/{orgId}/documents` com `fileName` = `Lacuna - ` + os primeiros 60 caracteres da pergunta + `.md`, e a lacuna sai de `GET /api/gaps` (AC 37, door 7) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Answer_creates_document_and_closes_gap"`
 
-**C42** - Depois de responder a lacuna, a mesma pergunta feita a outra IA da mesma organização cita o `documentId` da resposta em `sources`, e o texto do trecho contém a resposta (AC 38)
+**C42** - Depois de responder a lacuna, a mesma pergunta feita a outra IA da mesma organização cita o `documentId` da resposta em `sources`, e o texto do trecho contém a resposta (AC 38) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Answered_gap_becomes_retrievable_knowledge"`
 
-**C43** - Lacuna sem organização: responder sem `organizationId` dá `400` com `errors.organizationId`; com `organizationId` de outro usuário dá `404`; com `organizationId` próprio dá `200` e o documento fica nessa organização (AC 39)
+**C43** - Lacuna sem organização: responder sem `organizationId` dá `400` com `errors.organizationId`; com `organizationId` de outro usuário dá `404`; com `organizationId` próprio dá `200` e o documento fica nessa organização (AC 39) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Gap_without_organization_requires_one"`
 
-**C44** - `answer` vazio, só espaços e com 4001 caracteres responde `400` com `errors.answer`, e a lacuna continua aberta (AC 40)
+**C44** - `answer` vazio, só espaços e com 4001 caracteres responde `400` com `errors.answer`, e a lacuna continua aberta (AC 40) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Answer_bounds"`
 
-**C45** - `answer` e `dismiss` numa lacuna já respondida e numa já dispensada respondem `409` problem details (AC 41)
+**C45** - `answer` e `dismiss` numa lacuna já respondida e numa já dispensada respondem `409` problem details (AC 41) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Closed_gap_returns_409"`
 
-**C46** - Com o embedding falhando na resposta, `answer` responde `502` sem a mensagem do provedor, a lacuna continua em `GET /api/gaps` e a organização não ganha documento (AC 42)
+**C46** - Com o embedding falhando na resposta, `answer` responde `502` sem a mensagem do provedor, a lacuna continua em `GET /api/gaps` e a organização não ganha documento (AC 42) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Embedding_failure_keeps_gap_open"`
 
-**C47** - `POST /api/gaps/{id}/dismiss` numa lacuna aberta responde `204` e ela sai de `GET /api/gaps`; no banco o `status` é `dismissed` (AC 43)
+**C47** - `POST /api/gaps/{id}/dismiss` numa lacuna aberta responde `204` e ela sai de `GET /api/gaps`; no banco o `status` é `dismissed` (AC 43) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Dismiss_closes_gap"`
 
-**C48** - `answer` e `dismiss` com o id de uma lacuna de outro usuário e com um id inexistente respondem `404`, e a lacuna alheia continua aberta (AC 44)
+**C48** - `answer` e `dismiss` com o id de uma lacuna de outro usuário e com um id inexistente respondem `404`, e a lacuna alheia continua aberta (AC 44) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Foreign_or_missing_gap_returns_404"`
 
-**C49** - Apagar uma IA com lacuna aberta responde `204` e a lacuna continua em `GET /api/gaps` com `assistant = null` e a mesma `organization` (AC 45)
+**C49** - Apagar uma IA com lacuna aberta responde `204` e a lacuna continua em `GET /api/gaps` com `assistant = null` e a mesma `organization` (AC 45) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~GapsTests.Deleting_assistant_keeps_its_gaps"`
 
-**C50** - Depois de um ask com `found=false`, um Jev `answered`, um Jev `noMatch` e uma resposta de lacuna, cada um com marcadores únicos na pergunta, na resposta e na saída do roteador, nenhum log capturado contém qualquer marcador; a criação de lacuna gera um log com `GapId` (AC 46, observability)
+**C50** - Depois de um ask com `found=false`, um Jev `answered`, um Jev `noMatch` e uma resposta de lacuna, cada um com marcadores únicos na pergunta, na resposta e na saída do roteador, nenhum log capturado contém qualquer marcador; a criação de lacuna gera um log com `GapId` (AC 46, observability) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~CrossCuttingTests.Jev_and_gaps_never_log_content"`
 
 **C51** - Menu: com `GET /api/gaps` devolvendo 2 lacunas mostra "Lacunas (2)"; com `[]` mostra "Lacunas" sem número (AC 47)
@@ -248,10 +248,10 @@ Proof: `npm --prefix src/web run test -- -t "assistant page asks and links to or
 | entidades (5) | `Organization` C1, C12 · `Assistant` C6, C49 · `Document` C13, C41 · `Chunk` C12, C16 · `Gap` C35, C40 | - |
 | startup config: cliente `router` keyed (2 assemblies) | `Program.cs` via `AddAi` C29 · `ApiFactory` substitui o keyed C18 | - |
 
-**C61** - Cada uma das 14 rotas desta feature (`POST/GET /api/organizations`, `GET/DELETE /api/organizations/{id}`, `POST/GET /api/organizations/{id}/documents`, `DELETE /api/organizations/{id}/documents/{d}`, `POST /api/assistants`, `GET /api/assistants/{id}`, `POST /api/assistants/{id}/ask`, `POST /api/jev/ask`, `GET /api/gaps`, `POST /api/gaps/{id}/answer`, `POST /api/gaps/{id}/dismiss`) chamada sem cookie responde `401`, nunca `302`
+**C61** - Cada uma das 14 rotas desta feature (`POST/GET /api/organizations`, `GET/DELETE /api/organizations/{id}`, `POST/GET /api/organizations/{id}/documents`, `DELETE /api/organizations/{id}/documents/{d}`, `POST /api/assistants`, `GET /api/assistants/{id}`, `POST /api/assistants/{id}/ask`, `POST /api/jev/ask`, `GET /api/gaps`, `POST /api/gaps/{id}/answer`, `POST /api/gaps/{id}/dismiss`) chamada sem cookie responde `401`, nunca `302` ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AuthTests.Protected_route_without_session_returns_401"`
 
-**C62** - Os testes de ask e de IA do rag-mvp (C10 para `GET /api/assistants/{id}` e `ask`, C22-C28: `200` com top-5, `400` de `question`, `404` alheio/inexistente, `502` sem vazar mensagem, `429` no 21º) passam com a IA criada dentro de uma organização, sem mudar as asserções
+**C62** - Os testes de ask e de IA do rag-mvp (C10 para `GET /api/assistants/{id}` e `ask`, C22-C28: `200` com top-5, `400` de `question`, `404` alheio/inexistente, `502` sem vazar mensagem, `429` no 21º) passam com a IA criada dentro de uma organização, sem mudar as asserções ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AskTests"`
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~AssistantsTests.Foreign_or_missing_assistant_returns_404"`
 

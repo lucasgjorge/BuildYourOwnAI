@@ -28,28 +28,47 @@ public abstract class ApiTestBase(ApiFactory factory)
         return client;
     }
 
-    protected static async Task<Guid> CreateAssistantAsync(HttpClient client, string name = "Minha IA", string? instructions = null)
+    protected static async Task<Guid> CreateOrganizationAsync(HttpClient client, string name = "Minha organização")
     {
-        var response = await client.PostAsJsonAsync("/api/assistants", new { name, instructions });
+        var response = await client.PostAsJsonAsync("/api/organizations", new { name });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }
 
-    protected static Task<HttpResponseMessage> UploadAsync(HttpClient client, Guid assistantId, string fileName, byte[] content)
+    protected static async Task<Guid> CreateAssistantInAsync(
+        HttpClient client, Guid organizationId, string name = "Minha IA", string? instructions = null, string? routingDescription = null)
+    {
+        var response = await client.PostAsJsonAsync("/api/assistants", new { organizationId, name, instructions, routingDescription });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    /// <summary>An assistant alone in a new organization of its own - the rag-mvp shape.</summary>
+    protected static async Task<(Guid Organization, Guid Assistant)> NewAssistantAsync(
+        HttpClient client, string name = "Minha IA", string? instructions = null, string? routingDescription = null)
+    {
+        var organization = await CreateOrganizationAsync(client, name);
+        return (organization, await CreateAssistantInAsync(client, organization, name, instructions, routingDescription));
+    }
+
+    protected static async Task<Guid> CreateAssistantAsync(HttpClient client, string name = "Minha IA", string? instructions = null) =>
+        (await NewAssistantAsync(client, name, instructions)).Assistant;
+
+    protected static Task<HttpResponseMessage> UploadAsync(HttpClient client, Guid organizationId, string fileName, byte[] content)
     {
         var form = new MultipartFormDataContent();
         var file = new ByteArrayContent(content);
         file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         form.Add(file, "file", fileName);
-        return client.PostAsync($"/api/assistants/{assistantId}/documents", form);
+        return client.PostAsync($"/api/organizations/{organizationId}/documents", form);
     }
 
-    protected static Task<HttpResponseMessage> UploadTextAsync(HttpClient client, Guid assistantId, string fileName, string text) =>
-        UploadAsync(client, assistantId, fileName, Encoding.UTF8.GetBytes(text));
+    protected static Task<HttpResponseMessage> UploadTextAsync(HttpClient client, Guid organizationId, string fileName, string text) =>
+        UploadAsync(client, organizationId, fileName, Encoding.UTF8.GetBytes(text));
 
-    protected static async Task<Guid> UploadOkAsync(HttpClient client, Guid assistantId, string fileName, string text)
+    protected static async Task<Guid> UploadOkAsync(HttpClient client, Guid organizationId, string fileName, string text)
     {
-        var response = await UploadTextAsync(client, assistantId, fileName, text);
+        var response = await UploadTextAsync(client, organizationId, fileName, text);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }
@@ -85,9 +104,12 @@ public abstract class ApiTestBase(ApiFactory factory)
         return Convert.ToInt64(await command.ExecuteScalarAsync());
     }
 
-    protected Task<long> DocumentCountAsync(Guid assistantId) =>
-        ScalarAsync("select count(*) from documents where assistant_id = @id", ("id", assistantId));
+    protected static Task<HttpResponseMessage> JevAsync(HttpClient client, string question) =>
+        client.PostAsJsonAsync("/api/jev/ask", new { question });
 
-    protected Task<long> ChunkCountForAssistantAsync(Guid assistantId) =>
-        ScalarAsync("select count(*) from chunks c join documents d on d.id = c.document_id where d.assistant_id = @id", ("id", assistantId));
+    protected Task<long> DocumentCountAsync(Guid organizationId) =>
+        ScalarAsync("select count(*) from documents where organization_id = @id", ("id", organizationId));
+
+    protected Task<long> ChunkCountForOrganizationAsync(Guid organizationId) =>
+        ScalarAsync("select count(*) from chunks c join documents d on d.id = c.document_id where d.organization_id = @id", ("id", organizationId));
 }

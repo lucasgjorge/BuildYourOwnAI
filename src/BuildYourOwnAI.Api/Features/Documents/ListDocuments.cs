@@ -11,11 +11,11 @@ public static class ListDocuments
 
     private static async Task<IResult> Handle(Guid id, AppDbContext db, CancellationToken ct)
     {
-        if (!await db.Assistants.AnyAsync(a => a.Id == id, ct))
-            return Problems.AssistantNotFound();
+        if (!await db.Organizations.AnyAsync(o => o.Id == id, ct))
+            return Problems.OrganizationNotFound();
 
         var items = await db.Documents
-            .Where(d => d.AssistantId == id)
+            .Where(d => d.OrganizationId == id)
             .OrderByDescending(d => d.UploadedAt).ThenByDescending(d => d.Id)
             .Select(d => new Item(d.Id, d.FileName, d.SizeBytes, d.ChunkCount, d.UploadedAt))
             .ToListAsync(ct);

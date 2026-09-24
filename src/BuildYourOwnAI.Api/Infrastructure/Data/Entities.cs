@@ -5,25 +5,40 @@ namespace BuildYourOwnAI.Api.Infrastructure.Data;
 
 public sealed class AppUser : IdentityUser;
 
-/// <summary>The user's own AI: a name, instructions and the documents it answers from.</summary>
-public sealed class Assistant
+/// <summary>The user's container: the documents its assistants share, and the assistants themselves.</summary>
+public sealed class Organization
 {
     public const int NameMaxLength = 100;
-    public const int InstructionsMaxLength = 4000;
 
     public Guid Id { get; init; } = Guid.CreateVersion7();
     public required string OwnerId { get; init; }
     public required string Name { get; set; }
-    public string? Instructions { get; set; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public List<Assistant> Assistants { get; init; } = [];
     public List<Document> Documents { get; init; } = [];
+}
+
+/// <summary>The user's own AI: a persona (name, instructions, when to use it) over its organization's documents.</summary>
+public sealed class Assistant
+{
+    public const int NameMaxLength = 100;
+    public const int InstructionsMaxLength = 4000;
+    public const int RoutingDescriptionMaxLength = 500;
+
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public Guid OrganizationId { get; init; }
+    public Organization Organization { get; init; } = null!;
+    public required string Name { get; set; }
+    public string? Instructions { get; set; }
+    public string? RoutingDescription { get; set; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class Document
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
-    public Guid AssistantId { get; init; }
-    public Assistant Assistant { get; init; } = null!;
+    public Guid OrganizationId { get; init; }
+    public Organization Organization { get; init; } = null!;
     public required string FileName { get; init; }
     public long SizeBytes { get; init; }
     public required string ContentSha256 { get; init; }
@@ -40,4 +55,29 @@ public sealed class Chunk
     public int Index { get; init; }
     public required string Content { get; init; }
     public required Vector Embedding { get; init; }
+}
+
+public enum GapStatus
+{
+    Open,
+    Answered,
+    Dismissed,
+}
+
+/// <summary>A question no assistant could answer. Only <see cref="GapStatus.Open"/> transitions.</summary>
+public sealed class Gap
+{
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public required string OwnerId { get; init; }
+    public Guid? OrganizationId { get; init; }
+    public Organization? Organization { get; init; }
+    public Guid? AssistantId { get; init; }
+    public Assistant? Assistant { get; init; }
+    public required string Question { get; init; }
+    public required string NormalizedQuestion { get; init; }
+    public int AskCount { get; init; }
+    public DateTimeOffset FirstAskedAt { get; init; }
+    public DateTimeOffset LastAskedAt { get; init; }
+    public GapStatus Status { get; set; }
+    public Guid? DocumentId { get; set; }
 }

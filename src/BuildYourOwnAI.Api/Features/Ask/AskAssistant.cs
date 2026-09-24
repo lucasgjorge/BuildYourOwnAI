@@ -1,5 +1,9 @@
 using System.Text;
+using System.Text.Json;
+using BuildYourOwnAI.Api.Features.Gaps;
+using BuildYourOwnAI.Api.Infrastructure;
 using BuildYourOwnAI.Api.Infrastructure.Data;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Pgvector;
@@ -18,7 +22,10 @@ public static class AskAssistant
 
     public sealed record Source(Guid DocumentId, string FileName, int ChunkIndex, string Excerpt);
 
-    public sealed record Response(string Answer, IReadOnlyList<Source> Sources);
+    public sealed record Response(string Answer, bool Found, IReadOnlyList<Source> Sources);
+
+    /// <summary>The assistant a question goes to, already resolved through the owner filter.</summary>
+    internal sealed record Target(Guid Id, Guid OrganizationId, string Name, string? Instructions);
 
     public static void Map(RouteGroupBuilder group) =>
         group.MapPost("/{id:guid}/ask", Handle).RequireRateLimiting(RateLimitPolicy);
@@ -27,6 +34,7 @@ public static class AskAssistant
         Guid id,
         Request request,
         AppDbContext db,
+        ICurrentUser currentUser,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
         IChatClient chat,
         ILoggerFactory loggerFactory,
@@ -34,51 +42,93 @@ public static class AskAssistant
     {
         var logger = loggerFactory.CreateLogger(typeof(AskAssistant));
         var question = request.Question?.Trim() ?? "";
-        if (question.Length is 0 or > QuestionMaxLength)
-            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["question"] = [$"A pergunta deve ter entre 1 e {QuestionMaxLength} caracteres."],
-            });
+        if (InvalidQuestion(question) is { } invalid)
+            return invalid;
 
         var assistant = await db.Assistants
             .Where(a => a.Id == id)
-            .Select(a => new { a.Id, a.Name, a.Instructions })
+            .Select(a => new Target(a.Id, a.OrganizationId, a.Name, a.Instructions))
             .FirstOrDefaultAsync(ct);
         if (assistant is null)
             return Problems.AssistantNotFound();
 
+        var (response, failure) = await AnswerAsync(db, assistant, question, currentUser.Id!, embeddings, chat, logger, ct);
+        return failure ?? TypedResults.Ok(response);
+    }
+
+    internal static ValidationProblem? InvalidQuestion(string question) =>
+        question.Length is 0 or > QuestionMaxLength
+            ? TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["question"] = [$"A pergunta deve ter entre 1 e {QuestionMaxLength} caracteres."],
+            })
+            : null;
+
+    /// <summary>Retrieves from the assistant's organization, answers, and opens a gap when the answer was not found.</summary>
+    internal static async Task<(Response? Response, IResult? Failure)> AnswerAsync(
+        AppDbContext db,
+        Target assistant,
+        string question,
+        string ownerId,
+        IEmbeddingGenerator<string, Embedding<float>> embeddings,
+        IChatClient chat,
+        ILogger logger,
+        CancellationToken ct)
+    {
         var (questionVector, embedFailure) = await AiProviderCall.TryAsync(
             async () => new Vector((await embeddings.GenerateAsync([question], cancellationToken: ct))[0].Vector),
             logger, "embed-question");
         if (embedFailure is not null)
-            return embedFailure;
+            return (null, embedFailure);
 
-        var chunks = await RetrieveAsync(db, assistant.Id, questionVector!, ct);
+        var chunks = await RetrieveAsync(db, assistant.OrganizationId, questionVector!, ct);
 
         var messages = BuildPrompt(assistant.Name, assistant.Instructions, chunks, question);
-        var (answer, chatFailure) = await AiProviderCall.TryAsync(
-            () => chat.GetResponseAsync(messages, cancellationToken: ct), logger, "chat");
+        var (reply, chatFailure) = await AiProviderCall.TryAsync(
+            () => chat.GetResponseAsync(messages, new ChatOptions { ResponseFormat = ChatResponseFormat.Json }, ct), logger, "chat");
         if (chatFailure is not null)
-            return chatFailure;
+            return (null, chatFailure);
+
+        var (answer, found) = ParseReply(reply!.Text);
+        if (!found)
+            await RecordGap.RecordAsync(db, ownerId, assistant.OrganizationId, assistant.Id, question, logger, ct);
 
         var sources = chunks
             .Select(c => new Source(c.DocumentId, c.FileName, c.Index, c.Content.Length <= ExcerptLength ? c.Content : c.Content[..ExcerptLength]))
             .ToList();
-        return TypedResults.Ok(new Response(answer!.Text, sources));
+        return (new Response(answer, found, sources), null);
+    }
+
+    // Door 6: {"answer": string, "found": bool}. Anything else counts as answered, so a malformed reply never opens a gap.
+    private static (string Answer, bool Found) ParseReply(string text)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Object
+                && root.TryGetProperty("answer", out var answer) && answer.ValueKind == JsonValueKind.String
+                && root.TryGetProperty("found", out var found) && found.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                return (answer.GetString()!, found.GetBoolean());
+        }
+        catch (JsonException)
+        {
+        }
+        return (text, true);
     }
 
     private sealed record RetrievedChunk(Guid DocumentId, string FileName, int Index, string Content);
 
-    private static async Task<List<RetrievedChunk>> RetrieveAsync(AppDbContext db, Guid assistantId, Vector question, CancellationToken ct)
+    private static async Task<List<RetrievedChunk>> RetrieveAsync(AppDbContext db, Guid organizationId, Vector question, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        // The HNSW index filters after the scan; iterative scanning keeps going until TopK rows of THIS assistant
-        // are found instead of returning fewer when other assistants' chunks fill the candidate list.
+        // The HNSW index filters after the scan; iterative scanning keeps going until TopK rows of THIS organization
+        // are found instead of returning fewer when other organizations' chunks fill the candidate list.
         await db.Database.ExecuteSqlRawAsync("SET LOCAL hnsw.iterative_scan = strict_order", ct);
 
-        // Door 5: only chunks of the assistant already resolved through the owner filter.
+        // Door 1: only chunks of the organization of an assistant already resolved through the owner filter.
         var chunks = await db.Chunks
-            .Where(c => c.Document.AssistantId == assistantId)
+            .Where(c => c.Document.OrganizationId == organizationId)
             .OrderBy(c => c.Embedding.CosineDistance(question))
             .Take(TopK)
             .Select(c => new RetrievedChunk(c.DocumentId, c.Document.FileName, c.Index, c.Content))
@@ -93,7 +143,9 @@ public static class AskAssistant
         var system = new StringBuilder()
             .AppendLine($"Você é \"{name}\", um assistente que responde usando somente os trechos de documentos fornecidos.")
             .AppendLine("Se os trechos não contiverem a resposta, diga que não encontrou essa informação nos documentos.")
-            .AppendLine("Cite o nome do arquivo de onde tirou cada informação.");
+            .AppendLine("Cite o nome do arquivo de onde tirou cada informação.")
+            .AppendLine("Responda somente com um objeto JSON: {\"answer\": \"<sua resposta>\", \"found\": <true|false>}.")
+            .AppendLine("Use \"found\": false quando os trechos não contêm a resposta.");
         if (!string.IsNullOrWhiteSpace(instructions))
             system.AppendLine().AppendLine("Instruções do dono deste assistente:").AppendLine(instructions);
 

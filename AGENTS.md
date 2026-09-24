@@ -33,6 +33,8 @@ cd src/web && npm install && npm run dev             # Vite em localhost:5173, p
 cd src/web && npm test
 dotnet ef migrations add <Name> --project src/BuildYourOwnAI.Api
 dotnet user-secrets set "AI:OpenAI:ApiKey" "<key>" --project src/BuildYourOwnAI.Api
+dotnet user-secrets set "AI:OpenRouter:ApiKey" "<key>" --project src/BuildYourOwnAI.Api   # roteador do Jev
+dotnet user-secrets set "AI:OpenRouter:Model" "<model>" --project src/BuildYourOwnAI.Api
 ```
 
 ## Rules
@@ -40,7 +42,7 @@ dotnet user-secrets set "AI:OpenAI:ApiKey" "<key>" --project src/BuildYourOwnAI.
 Arquitetura e padrões: siga o agente [.claude/agents/architecture-guardian.md](.claude/agents/architecture-guardian.md)
 e rode-o sobre o diff antes de declarar uma feature pronta. Resumo das regras que não se negociam:
 
-- Todo acesso a `Document`/`Chunk` passa por um `Assistant` resolvido pelo query filter de dono. Recurso de outro usuário responde 404.
+- Todo acesso a `Assistant`/`Document`/`Chunk` passa por uma `Organization` resolvida pelo query filter de dono (AD-010); `Gap` tem dono próprio. Recurso de outro usuário responde 404.
 - Nenhum handler usa o SDK da OpenAI direto. Use `IChatClient` / `IEmbeddingGenerator<string, Embedding<float>>`.
 - Erro HTTP é sempre problem details (`Results.Problem` / `Results.ValidationProblem`).
 - Testes não chamam a OpenAI. Use os fakes de IA; o banco é Postgres real via Testcontainers.

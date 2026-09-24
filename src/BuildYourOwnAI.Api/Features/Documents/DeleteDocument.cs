@@ -11,12 +11,12 @@ public static class DeleteDocument
     private static async Task<Results<NoContent, ProblemHttpResult>> Handle(
         Guid id, Guid documentId, AppDbContext db, CancellationToken ct)
     {
-        if (!await db.Assistants.AnyAsync(a => a.Id == id, ct))
-            return Problems.AssistantNotFound();
+        if (!await db.Organizations.AnyAsync(o => o.Id == id, ct))
+            return Problems.OrganizationNotFound();
 
-        // Chunks go with the document through ON DELETE CASCADE (door 3).
+        // Chunks go with the document through ON DELETE CASCADE (door 1).
         var deleted = await db.Documents
-            .Where(d => d.Id == documentId && d.AssistantId == id)
+            .Where(d => d.Id == documentId && d.OrganizationId == id)
             .ExecuteDeleteAsync(ct);
 
         return deleted == 0 ? Problems.DocumentNotFound() : TypedResults.NoContent();

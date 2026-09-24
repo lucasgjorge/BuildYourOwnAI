@@ -82,14 +82,14 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Logout_returns_204_and_ends_session()
     {
         var client = await NewUserClientAsync();
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/assistants")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/organizations")).StatusCode);
 
         var logout = await client.PostAsync("/api/auth/logout", null);
 
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
         var expired = Assert.Single(SetCookies(logout), c => c.StartsWith(SessionCookie));
         Assert.Contains("expires=thu, 01 jan 1970", expired.ToLowerInvariant());
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/assistants")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/organizations")).StatusCode);
     }
 
     public static TheoryData<string, string> ProtectedRoutes()
@@ -98,25 +98,31 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
         var doc = Guid.NewGuid();
         return new()
         {
+            { "POST", "/api/organizations" },
+            { "GET", "/api/organizations" },
+            { "GET", $"/api/organizations/{id}" },
+            { "DELETE", $"/api/organizations/{id}" },
+            { "POST", $"/api/organizations/{id}/documents" },
+            { "GET", $"/api/organizations/{id}/documents" },
+            { "DELETE", $"/api/organizations/{id}/documents/{doc}" },
             { "POST", "/api/assistants" },
-            { "GET", "/api/assistants" },
             { "GET", $"/api/assistants/{id}" },
-            { "DELETE", $"/api/assistants/{id}" },
-            { "POST", $"/api/assistants/{id}/documents" },
-            { "GET", $"/api/assistants/{id}/documents" },
-            { "DELETE", $"/api/assistants/{id}/documents/{doc}" },
             { "POST", $"/api/assistants/{id}/ask" },
+            { "POST", "/api/jev/ask" },
+            { "GET", "/api/gaps" },
+            { "POST", $"/api/gaps/{id}/answer" },
+            { "POST", $"/api/gaps/{id}/dismiss" },
         };
     }
 
-    // C6
+    // C61 (rag-mvp C6 over the routes of this feature)
     [Theory]
     [MemberData(nameof(ProtectedRoutes))]
     public async Task Protected_route_without_session_returns_401(string method, string path)
     {
         var client = Factory.CreateHttpsClient();
         var request = new HttpRequestMessage(new HttpMethod(method), path);
-        if (method == "POST") request.Content = JsonContent.Create(new { name = "x", question = "x" });
+        if (method == "POST") request.Content = JsonContent.Create(new { name = "x", question = "x", answer = "x" });
 
         var response = await client.SendAsync(request);
 

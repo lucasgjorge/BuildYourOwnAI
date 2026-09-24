@@ -17,10 +17,10 @@ public sealed class AskTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Ask_returns_answer_with_top5_sources()
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
+        var (org, id) = await NewAssistantAsync(client);
         var docs = new Dictionary<Guid, int>();
         for (var k = 1; k <= 7; k++)
-            docs[await UploadOkAsync(client, id, $"doc{k}.txt", GradedDoc(k))] = k;
+            docs[await UploadOkAsync(client, org, $"doc{k}.txt", GradedDoc(k))] = k;
 
         var response = await AskAsync(client, id, "alpha");
 
@@ -37,9 +37,9 @@ public sealed class AskTests(ApiFactory factory) : ApiTestBase(factory)
             Assert.Equal(GradedDoc(k), s.GetProperty("excerpt").GetString());
         }
 
-        var small = await CreateAssistantAsync(client, "Pequena");
-        await UploadOkAsync(client, small, "um.txt", GradedDoc(2));
-        await UploadOkAsync(client, small, "dois.txt", GradedDoc(5));
+        var (smallOrg, small) = await NewAssistantAsync(client, "Pequena");
+        await UploadOkAsync(client, smallOrg, "um.txt", GradedDoc(2));
+        await UploadOkAsync(client, smallOrg, "dois.txt", GradedDoc(5));
         var smallSources = (await JsonAsync(await AskAsync(client, small, "alpha"))).GetProperty("sources");
         Assert.Equal(2, smallSources.GetArrayLength());
     }
@@ -49,16 +49,16 @@ public sealed class AskTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Ask_never_retrieves_from_another_assistant()
     {
         var client = await NewUserClientAsync();
-        var a = await CreateAssistantAsync(client, "A");
-        var b = await CreateAssistantAsync(client, "B");
+        var (orgA, a) = await NewAssistantAsync(client, "A");
+        var (orgB, _) = await NewAssistantAsync(client, "B");
         var docsOfA = new[]
         {
-            await UploadOkAsync(client, a, "a1.txt", "banana laranja"),
-            await UploadOkAsync(client, a, "a2.txt", "uva pera"),
+            await UploadOkAsync(client, orgA, "a1.txt", "banana laranja"),
+            await UploadOkAsync(client, orgA, "a2.txt", "uva pera"),
         };
         var secretOfB = Marker();
         for (var i = 0; i < 6; i++)
-            await UploadOkAsync(client, b, $"b{i}.txt", $"banana banana banana {secretOfB} {i}");
+            await UploadOkAsync(client, orgB, $"b{i}.txt", $"banana banana banana {secretOfB} {i}");
         var marker = Marker();
 
         var body = await JsonAsync(await AskAsync(client, a, $"banana {marker}"));
@@ -74,9 +74,9 @@ public sealed class AskTests(ApiFactory factory) : ApiTestBase(factory)
     {
         var client = await NewUserClientAsync();
         var instructions = $"Responda sempre como um pirata {Marker()}";
-        var id = await CreateAssistantAsync(client, "Pirata", instructions);
+        var (org, id) = await NewAssistantAsync(client, "Pirata", instructions);
         var texts = new[] { "o tesouro esta na ilha norte", "o mapa esta no navio" };
-        foreach (var t in texts) await UploadOkAsync(client, id, $"{Guid.NewGuid():N}.txt", t);
+        foreach (var t in texts) await UploadOkAsync(client, org, $"{Guid.NewGuid():N}.txt", t);
         var question = $"onde esta o tesouro {Marker()}";
 
         var body = await JsonAsync(await AskAsync(client, id, question));
@@ -129,8 +129,8 @@ public sealed class AskTests(ApiFactory factory) : ApiTestBase(factory)
     public async Task Ask_provider_failure_returns_502(string trigger)
     {
         var client = await NewUserClientAsync();
-        var id = await CreateAssistantAsync(client);
-        await UploadOkAsync(client, id, "a.txt", $"conteudo {Guid.NewGuid()}");
+        var (org, id) = await NewAssistantAsync(client);
+        await UploadOkAsync(client, org, "a.txt", $"conteudo {Guid.NewGuid()}");
 
         var response = await AskAsync(client, id, $"pergunta {trigger}");
 
@@ -153,5 +153,43 @@ public sealed class AskTests(ApiFactory factory) : ApiTestBase(factory)
 
         Assert.Equal(HttpStatusCode.TooManyRequests, (await AskAsync(client, id, "pergunta 21")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await AskAsync(other, otherId, "pergunta do outro")).StatusCode);
+    }
+
+    // C10
+    [Fact]
+    public async Task Assistants_of_same_organization_share_documents()
+    {
+        var client = await NewUserClientAsync();
+        var organization = await CreateOrganizationAsync(client, "ACME");
+        var direct = await CreateAssistantInAsync(client, organization, "Direto");
+        var teacher = await CreateAssistantInAsync(client, organization, "Professor", "Explique como um professor");
+        var document = await UploadOkAsync(client, organization, "manual.txt", $"politica de ferias {Marker()}");
+
+        foreach (var assistant in new[] { direct, teacher })
+        {
+            var body = await JsonAsync(await AskAsync(client, assistant, "politica de ferias"));
+            Assert.Contains(body.GetProperty("sources").EnumerateArray(), s => s.GetProperty("documentId").GetGuid() == document);
+        }
+    }
+
+    // C11
+    [Fact]
+    public async Task Retrieves_only_from_own_organization()
+    {
+        var client = await NewUserClientAsync();
+        var (acme, assistant) = await NewAssistantAsync(client, "ACME");
+        var globex = await CreateOrganizationAsync(client, "Globex");
+        var own = await UploadOkAsync(client, acme, "acme.txt", "reembolso de viagem aprovado pelo gestor");
+        var secret = Marker();
+        var foreign = new List<Guid>();
+        for (var i = 0; i < 6; i++)
+            foreign.Add(await UploadOkAsync(client, globex, $"globex{i}.txt", $"reembolso reembolso reembolso viagem {secret} {i}"));
+        var marker = Marker();
+
+        var body = await JsonAsync(await AskAsync(client, assistant, $"reembolso viagem {marker}"));
+
+        var sources = body.GetProperty("sources").EnumerateArray().Select(s => s.GetProperty("documentId").GetGuid()).ToList();
+        Assert.Equal([own], sources);
+        Assert.DoesNotContain(secret, Factory.Chat.PromptContaining(marker));
     }
 }

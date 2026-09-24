@@ -17,7 +17,7 @@ public static class UploadDocument
 
     public static void Map(RouteGroupBuilder group) => group.MapPost("/{id:guid}/documents", Handle);
 
-    // Door 8: everything happens inside the request; nothing is persisted until every embedding exists.
+    // AD-008: everything happens inside the request; nothing is persisted until every embedding exists.
     private static async Task<IResult> Handle(
         Guid id,
         HttpRequest request,
@@ -29,8 +29,8 @@ public static class UploadDocument
         var logger = loggerFactory.CreateLogger(typeof(UploadDocument));
         var started = Stopwatch.GetTimestamp();
 
-        if (!await db.Assistants.AnyAsync(a => a.Id == id, ct))
-            return Problems.AssistantNotFound();
+        if (!await db.Organizations.AnyAsync(o => o.Id == id, ct))
+            return Problems.OrganizationNotFound();
 
         if (!request.HasFormContentType)
             return FileRequired();
@@ -54,48 +54,73 @@ public static class UploadDocument
             content = buffer.ToArray();
         }
 
-        var sha256 = Convert.ToHexStringLower(SHA256.HashData(content));
-        if (await db.Documents.AnyAsync(d => d.AssistantId == id && d.ContentSha256 == sha256, ct))
-            return AlreadyAttached();
-
-        var chunks = TextChunker.Split(TextExtractor.Extract(file.FileName, content));
-        if (chunks.Count == 0)
-            return Results.Problem(
-                statusCode: StatusCodes.Status422UnprocessableEntity,
-                title: "Não foi possível extrair texto do arquivo (PDF escaneado?).");
-
-        var (vectors, failure) = await AiProviderCall.TryAsync(() => EmbedAsync(embeddings, chunks, ct), logger, "embed-document");
+        var (document, failure) = await PrepareAsync(db, embeddings, id, Path.GetFileName(file.FileName), content, logger, ct);
         if (failure is not null)
             return failure;
 
-        var document = new Document
-        {
-            AssistantId = id,
-            FileName = Path.GetFileName(file.FileName),
-            SizeBytes = file.Length,
-            ContentSha256 = sha256,
-            ChunkCount = chunks.Count,
-            Chunks = chunks.Select((text, i) => new Chunk { Index = i, Content = text, Embedding = vectors![i] }).ToList(),
-        };
-        db.Documents.Add(document);
+        db.Documents.Add(document!);
         try
         {
             await db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException ex) when (IsDuplicate(ex))
         {
-            // Two uploads of the same content raced past the check above; the unique index (door 3) decides.
             return AlreadyAttached();
         }
 
         logger.LogInformation(
-            "Document {DocumentId} ingested into assistant {AssistantId}: {ChunkCount} chunks in {ElapsedMs} ms",
-            document.Id, id, document.ChunkCount, (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            "Document {DocumentId} ingested into organization {OrganizationId}: {ChunkCount} chunks in {ElapsedMs} ms",
+            document!.Id, id, document.ChunkCount, (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         return TypedResults.Created(
-            $"/api/assistants/{id}/documents/{document.Id}",
+            $"/api/organizations/{id}/documents/{document.Id}",
             new Response(document.Id, document.FileName, document.SizeBytes, document.ChunkCount, document.UploadedAt));
     }
+
+    /// <summary>
+    /// Hashes, extracts, chunks and embeds <paramref name="content"/> into an unsaved <see cref="Document"/> of the
+    /// organization. The caller adds it and saves, so it can close other work in the same transaction.
+    /// </summary>
+    internal static async Task<(Document? Document, IResult? Failure)> PrepareAsync(
+        AppDbContext db,
+        IEmbeddingGenerator<string, Embedding<float>> embeddings,
+        Guid organizationId,
+        string fileName,
+        byte[] content,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        var sha256 = Convert.ToHexStringLower(SHA256.HashData(content));
+        if (await db.Documents.AnyAsync(d => d.OrganizationId == organizationId && d.ContentSha256 == sha256, ct))
+            return (null, AlreadyAttached());
+
+        var chunks = TextChunker.Split(TextExtractor.Extract(fileName, content));
+        if (chunks.Count == 0)
+            return (null, Results.Problem(
+                statusCode: StatusCodes.Status422UnprocessableEntity,
+                title: "Não foi possível extrair texto do arquivo (PDF escaneado?)."));
+
+        var (vectors, failure) = await AiProviderCall.TryAsync(() => EmbedAsync(embeddings, chunks, ct), logger, "embed-document");
+        if (failure is not null)
+            return (null, failure);
+
+        return (new Document
+        {
+            OrganizationId = organizationId,
+            FileName = fileName,
+            SizeBytes = content.Length,
+            ContentSha256 = sha256,
+            ChunkCount = chunks.Count,
+            Chunks = chunks.Select((text, i) => new Chunk { Index = i, Content = text, Embedding = vectors![i] }).ToList(),
+        }, null);
+    }
+
+    // Two uploads of the same content raced past the check in PrepareAsync; the unique index (door 1) decides.
+    internal static bool IsDuplicate(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    internal static IResult AlreadyAttached() =>
+        Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Este arquivo já foi anexado a esta organização.");
 
     private static async Task<List<Vector>> EmbedAsync(
         IEmbeddingGenerator<string, Embedding<float>> embeddings, IReadOnlyList<string> chunks, CancellationToken ct)
@@ -111,7 +136,4 @@ public static class UploadDocument
 
     private static IResult FileRequired() =>
         TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Envie um arquivo não vazio no campo 'file'."] });
-
-    private static IResult AlreadyAttached() =>
-        Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Este arquivo já foi anexado a esta IA.");
 }

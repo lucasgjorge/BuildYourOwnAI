@@ -1,3 +1,4 @@
+using BuildYourOwnAI.Api.Infrastructure.Ai;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -23,6 +24,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeEmbeddingGenerator Embeddings { get; } = new();
     public FakeChatClient Chat { get; } = new();
+    public FakeRouterClient Router { get; } = new();
     public CapturingLoggerProvider Logs { get; } = new();
 
     public string ConnectionString => _postgres.GetConnectionString();
@@ -55,6 +57,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.RemoveAll<IChatClient>();
             services.RemoveAll<IEmbeddingGenerator<string, Embedding<float>>>();
             services.AddSingleton<IChatClient>(Chat);
+            services.AddKeyedSingleton<IChatClient>(AiServiceCollectionExtensions.RouterKey, Router);
             services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(Embeddings);
         });
     }
