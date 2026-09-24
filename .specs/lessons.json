@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 15,
+  "next_id": 17,
   "lessons": [
     {
       "id": "L-001",
@@ -256,6 +256,42 @@
       ],
       "created": "2026-09-24T18:04:30Z",
       "last_seen": "2026-09-24T18:04:30Z"
+    },
+    {
+      "id": "L-015",
+      "key": "surviving_mutant::prove an at most once guarantee with simultaneous requests not only a second request after the first",
+      "text": "Prove an at-most-once guarantee with simultaneous requests, not only a second request after the first",
+      "signal": "surviving_mutant",
+      "scope": "concurrency",
+      "status": "candidate",
+      "features": [
+        "study-mode"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "study-mode round 1: removing ChosenOption == null survived C14 (concurrency)"
+      ],
+      "created": "2026-09-24T18:29:28Z",
+      "last_seen": "2026-09-24T18:29:28Z"
+    },
+    {
+      "id": "L-016",
+      "key": "ac_gap::when parsing model output check the json value kind before every typed read and test wrong types not only missing fields",
+      "text": "When parsing model output, check the JSON value kind before every typed read and test wrong types, not only missing fields",
+      "signal": "ac_gap",
+      "scope": "ai-contract",
+      "status": "candidate",
+      "features": [
+        "study-mode"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "study-mode round 1: model JSON with wrong types returned 500 (ai-contract)"
+      ],
+      "created": "2026-09-24T18:29:28Z",
+      "last_seen": "2026-09-24T18:29:28Z"
     }
   ]
 }

@@ -98,6 +98,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: source-preview round 1: AI:Routing:TimeoutSeconds unproven (config)
 - last seen: 2026-09-24T18:04:30Z
 
+### L-015 - Prove an at-most-once guarantee with simultaneous requests, not only a second request after the first
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `concurrency` · harmful: 0
+- features: study-mode
+- evidence: study-mode round 1: removing ChosenOption == null survived C14 (concurrency)
+- last seen: 2026-09-24T18:29:28Z
+
+### L-016 - When parsing model output, check the JSON value kind before every typed read and test wrong types, not only missing fields
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `ai-contract` · harmful: 0
+- features: study-mode
+- evidence: study-mode round 1: model JSON with wrong types returned 500 (ai-contract)
+- last seen: 2026-09-24T18:29:28Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -21,10 +21,10 @@
 
 ## Handoff
 
-**Feature**: source-preview (prévia do trecho + escolha automática sem o nome "Jev") e jev-choice (primitiva "choice")
-**Where**: ambos PASS na rodada 2 em `2d13fc7`; `validate_verification.py` exit 0 nos dois
-**In progress**: study-mode no worktree `../BuildYourOwnAI-study` (branch `study-mode`): checks em `1bc24c8`, tabelas e migration em `76e3f6e`; faltam as rotas, a tela e a verificação
-**Next step**: terminar o study-mode, verificar e juntar ao `main`; depois o admin-usage (plano em `fd5e008`, aguardando aprovação)
+**Feature**: study-mode (perguntas de múltipla escolha com correção e trecho de origem)
+**Where**: PASS na rodada 2 em `c3e6833`; `validate_verification.py` exit 0. Antes: source-preview e jev-choice PASS em `2d13fc7`; user-name (outra sessão) verificado em `e6322d3`
+**In progress**: nada
+**Next step**: admin-usage (plano em `.specs/features/admin-usage/plan.md`, aguardando aprovação); reusa `GET /api/auth/me` da feature user-name para `isAdmin`
 **Blockers**: preços em `AI:Pricing` e `Admin:Emails` de produção (admin-usage, blocks go-live); chave da OpenAI de produção
 **Uncommitted**: nada
 **Branch**: main (não enviado ao origin)
