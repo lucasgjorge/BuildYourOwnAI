@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/study-mode/plan.md`
 
-30 checks in 3 slices · 3 one-way doors · 0 open
+29 checks in 3 slices (a numeração pula C17) · 3 one-way doors · 0 open
 
 Comandos de prova:
 
