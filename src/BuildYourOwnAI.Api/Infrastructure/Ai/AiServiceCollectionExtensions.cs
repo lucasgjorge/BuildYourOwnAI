@@ -22,24 +22,41 @@ public static class AiServiceCollectionExtensions
 {
     /// <summary>
     /// Door 6: handlers only see <see cref="IChatClient"/> and <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
-    /// The OpenAI client is built lazily so the app starts without a key; calls then fail and surface as 502.
+    /// Without a key the app still starts; every AI call then fails inside the handler and surfaces as 502.
     /// </summary>
     public static IServiceCollection AddAi(this IServiceCollection services, IConfiguration configuration)
     {
         var options = configuration.GetSection("AI").Get<AiOptions>() ?? new AiOptions();
 
-        services.AddSingleton(_ => new OpenAIClient(new ApiKeyCredential(RequireKey(options))));
-        services.AddSingleton<IChatClient>(sp =>
-            sp.GetRequiredService<OpenAIClient>().GetChatClient(options.ChatModel).AsIChatClient());
-        services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
-            sp.GetRequiredService<OpenAIClient>().GetEmbeddingClient(options.EmbeddingModel)
-                .AsIEmbeddingGenerator(AiOptions.EmbeddingDimensions));
+        if (string.IsNullOrWhiteSpace(options.OpenAI.ApiKey))
+        {
+            services.AddSingleton<IChatClient, UnconfiguredAiClient>();
+            services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>, UnconfiguredAiClient>();
+            return services;
+        }
+
+        var openAi = new OpenAIClient(new ApiKeyCredential(options.OpenAI.ApiKey));
+        services.AddSingleton(openAi.GetChatClient(options.ChatModel).AsIChatClient());
+        services.AddSingleton(openAi.GetEmbeddingClient(options.EmbeddingModel).AsIEmbeddingGenerator(AiOptions.EmbeddingDimensions));
 
         return services;
     }
+}
 
-    private static string RequireKey(AiOptions options) =>
-        string.IsNullOrWhiteSpace(options.OpenAI.ApiKey)
-            ? throw new InvalidOperationException("AI:OpenAI:ApiKey is not configured.")
-            : options.OpenAI.ApiKey;
+/// <summary>Stands in for the provider when AI:OpenAI:ApiKey is missing: resolvable, but every call fails.</summary>
+internal sealed class UnconfiguredAiClient : IChatClient, IEmbeddingGenerator<string, Embedding<float>>
+{
+    private static InvalidOperationException NotConfigured() => new("AI:OpenAI:ApiKey is not configured.");
+
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+        throw NotConfigured();
+
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+        throw NotConfigured();
+
+    public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(IEnumerable<string> values, EmbeddingGenerationOptions? options = null, CancellationToken cancellationToken = default) =>
+        throw NotConfigured();
+
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
 }
