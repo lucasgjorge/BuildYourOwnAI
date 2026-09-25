@@ -106,9 +106,13 @@ export function Thread(props: Props) {
       return
     }
 
+    // The last answer goes along as context, so a follow-up ("e quantos dias?") is routed too instead of asking who answers.
+    const last = entries.findLast(e => e.kind === 'answer')
+    const previous = last && { question: last.question, assistantId: last.by.id }
+
     push({ kind: 'question', text: question, to: 'automático' })
     setPending('Escolhendo quem responde…')
-    routing.mutate(question, {
+    routing.mutate({ question, previous }, {
       onSuccess: response => {
         if (response.kind === 'answered')
           showAnswer({

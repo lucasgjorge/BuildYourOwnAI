@@ -14,10 +14,14 @@ public static class RouteAsk
     private const int MaxOptions = 3;
     private const int MaxFallbackCandidates = 5;
     private const string NoneKey = "nenhuma";
-    private const string Instructions = "Qual IA deve responder a esta pergunta do usuário?";
+    private const string Instructions =
+        "Qual IA deve responder à pergunta atual do usuário? A pergunta anterior, quando houver, é só contexto: uma continuação dela vai para a mesma IA.";
     private const string NoneDescription = "Nenhuma dessas IAs: a pergunta é sobre outro assunto";
 
-    public sealed record Request(string? Question);
+    /// <summary><paramref name="Previous"/>: the thread's last answered turn, so a follow-up ("e quantos dias?") can be routed.</summary>
+    public sealed record Request(string? Question, PreviousTurn? Previous = null);
+
+    public sealed record PreviousTurn(string? Question, Guid? AssistantId);
 
     public sealed record AssistantRef(Guid Id, string Name, string OrganizationName);
 
@@ -44,9 +48,9 @@ public static class RouteAsk
         // All assistants: routes among every assistant of the user.
         app.MapPost("/api/route/ask", (
                 Request request, AppDbContext db, ICurrentUser currentUser,
-                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IRoutingChoice routing,
+                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IRoutingChoice routing, IUsageRecorder usage,
                 IOptions<AiOptions> ai, ILoggerFactory loggerFactory, CancellationToken ct) =>
-                Handle(null, request, db, currentUser, embeddings, chat, routing, ai.Value.Routing, loggerFactory, ct))
+                Handle(null, request, db, currentUser, embeddings, chat, routing, usage, ai.Value.Routing, loggerFactory, ct))
             .RequireAuthorization()
             .RequireRateLimiting(AskPipeline.RateLimitPolicy)
             .WithTags("Routing");
@@ -54,9 +58,9 @@ public static class RouteAsk
         // Door 1 (org-chat): an organization's chat routes only among that organization's assistants.
         app.MapPost("/api/organizations/{id:guid}/route/ask", (
                 Guid id, Request request, AppDbContext db, ICurrentUser currentUser,
-                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IRoutingChoice routing,
+                IEmbeddingGenerator<string, Embedding<float>> embeddings, IChatClient chat, IRoutingChoice routing, IUsageRecorder usage,
                 IOptions<AiOptions> ai, ILoggerFactory loggerFactory, CancellationToken ct) =>
-                Handle(id, request, db, currentUser, embeddings, chat, routing, ai.Value.Routing, loggerFactory, ct))
+                Handle(id, request, db, currentUser, embeddings, chat, routing, usage, ai.Value.Routing, loggerFactory, ct))
             .RequireAuthorization()
             .RequireRateLimiting(AskPipeline.RateLimitPolicy)
             .WithTags("Routing");
@@ -72,6 +76,7 @@ public static class RouteAsk
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
         IChatClient chat,
         IRoutingChoice routing,
+        IUsageRecorder usage,
         AiOptions.RoutingSection settings,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
@@ -80,6 +85,13 @@ public static class RouteAsk
         var question = request.Question?.Trim() ?? "";
         if (AskPipeline.InvalidQuestion(question) is { } invalid)
             return invalid;
+
+        var previousQuestion = request.Previous?.Question?.Trim() is { Length: > 0 } p ? p : null;
+        if (previousQuestion is { Length: > AskPipeline.QuestionMaxLength })
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["previous.question"] = [$"A pergunta anterior deve ter no máximo {AskPipeline.QuestionMaxLength} caracteres."],
+            });
 
         if (organizationId is { } orgId && !await db.Organizations.AnyAsync(o => o.Id == orgId, ct))
             return Problems.OrganizationNotFound();
@@ -97,7 +109,10 @@ public static class RouteAsk
                     ? "Nenhuma IA disponível para a escolha automática. Preencha 'Quando usar esta IA' em pelo menos uma IA."
                     : "Nenhuma IA desta organização está disponível para a escolha automática. Preencha 'Quando usar esta IA' em pelo menos uma.");
 
-        var decision = await ChooseAsync(routing, settings, eligible, question, logger, ct);
+        var state = previousQuestion is null
+            ? question
+            : await WithPreviousAsync(db, organizationId, question, previousQuestion, request.Previous!.AssistantId, ct);
+        var decision = await ChooseAsync(routing, usage, settings, eligible, state, logger, ct);
         if (decision is null)
             return Outcome(logger, eligible.Count, new Response("clarify", Candidates: Refs(eligible, MaxFallbackCandidates)));
 
@@ -113,13 +128,30 @@ public static class RouteAsk
 
         var (answer, failure) = await AskPipeline.AnswerAsync(
             db, new AskPipeline.Target(chosen.Id, chosen.OrganizationId, chosen.Name, chosen.Instructions),
-            question, currentUser.Id!, embeddings, chat, logger, ct);
+            question, currentUser.Id!, embeddings, chat, usage, UsageMode.Routing, logger, ct, previousQuestion);
         if (failure is not null)
             return failure;
 
         return Outcome(logger, eligible.Count, new Response(
             "answered", chosen.Ref, answer!.Text, answer.Found, answer.Sources,
             Alternatives: Refs(decision.ByProbability.Where(e => e != chosen), MaxOptions)));
+    }
+
+    /// <summary>
+    /// What the router reads for a follow-up: the previous question, who answered it, and the current one. The assistant
+    /// is resolved through the owner filter and within this chat's organization, so a foreign id adds nothing.
+    /// </summary>
+    private static async Task<string> WithPreviousAsync(
+        AppDbContext db, Guid? organizationId, string question, string previousQuestion, Guid? previousAssistantId, CancellationToken ct)
+    {
+        var answeredBy = previousAssistantId is { } id
+            ? await db.Assistants
+                .Where(a => a.Id == id && (organizationId == null || a.OrganizationId == organizationId))
+                .Select(a => a.Name)
+                .FirstOrDefaultAsync(ct)
+            : null;
+        var by = answeredBy is null ? "" : $" (respondida por {answeredBy})";
+        return $"Pergunta anterior{by}: {previousQuestion}\nPergunta atual: {question}";
     }
 
     private static List<AssistantRef> Refs(IEnumerable<Eligible> eligible, int max) => eligible.Take(max).Select(e => e.Ref).ToList();
@@ -132,7 +164,8 @@ public static class RouteAsk
 
     /// <summary>Asks the choice primitive; null when the call failed or it picked a key it was not given (fallback to clarify).</summary>
     private static async Task<Decision?> ChooseAsync(
-        IRoutingChoice routing, AiOptions.RoutingSection settings, List<Eligible> eligible, string question, ILogger logger, CancellationToken ct)
+        IRoutingChoice routing, IUsageRecorder usage, AiOptions.RoutingSection settings, List<Eligible> eligible, string state,
+        ILogger logger, CancellationToken ct)
     {
         // Options are keyed by position, never by id, plus an explicit "none of them".
         // Only names, organizations and "when to use" go out: never instructions or documents.
@@ -144,13 +177,14 @@ public static class RouteAsk
         RoutingChoice choice;
         try
         {
-            choice = await routing.ChooseAsync(question, Instructions, criteria, ct);
+            choice = await routing.ChooseAsync(state, Instructions, criteria, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning("Routing call failed with {ExceptionType}", ex.GetType().Name);
             return null;
         }
+        await usage.RecordAsync(UsageMode.Routing, UsageOperation.Choice, choice.Model, choice.Usage, ct);
 
         Eligible? chosen = null;
         if (choice.Choice != NoneKey)

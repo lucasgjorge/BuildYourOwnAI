@@ -19,6 +19,7 @@ public static class UploadDocument
         HttpRequest request,
         AppDbContext db,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
+        IUsageRecorder usage,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
@@ -50,7 +51,7 @@ public static class UploadDocument
             content = buffer.ToArray();
         }
 
-        var (document, failure) = await DocumentIngestion.PrepareAsync(db, embeddings, id, Path.GetFileName(file.FileName), content, logger, ct);
+        var (document, failure) = await DocumentIngestion.PrepareAsync(db, embeddings, usage, UsageMode.Upload, id, Path.GetFileName(file.FileName), content, logger, ct);
         if (failure is not null)
             return failure;
 

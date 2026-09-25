@@ -13,6 +13,14 @@ public sealed class AiOptions
     public OpenAiSection OpenAI { get; set; } = new();
     public OpenRouterSection OpenRouter { get; set; } = new();
     public RoutingSection Routing { get; set; } = new();
+    /// <summary>US$ per million tokens, by model name (admin-usage). A model missing here is recorded without cost.</summary>
+    public Dictionary<string, ModelPrice> Pricing { get; set; } = new();
+
+    public sealed class ModelPrice
+    {
+        public decimal InputPerMillion { get; set; }
+        public decimal OutputPerMillion { get; set; }
+    }
 
     public sealed class OpenAiSection
     {

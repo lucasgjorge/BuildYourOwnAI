@@ -32,7 +32,11 @@ public static class AskPipeline
             })
             : null;
 
-    /// <summary>Retrieves from the assistant's organization, answers, and opens a gap when the answer was not found.</summary>
+    /// <summary>
+    /// Retrieves from the assistant's organization, answers, and opens a gap when the answer was not found.
+    /// <paramref name="previousQuestion"/> is the thread's previous question: it steers retrieval and the answer of a
+    /// follow-up, but only <paramref name="question"/> becomes a gap.
+    /// </summary>
     public static async Task<(Answer? Answer, IResult? Failure)> AnswerAsync(
         AppDbContext db,
         Target assistant,
@@ -40,24 +44,30 @@ public static class AskPipeline
         string ownerId,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
         IChatClient chat,
+        IUsageRecorder usage,
+        UsageMode mode,
         ILogger logger,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? previousQuestion = null)
     {
-        var (questionVector, embedFailure) = await AiProviderCall.TryAsync(
-            async () => new Vector((await embeddings.GenerateAsync([question], cancellationToken: ct))[0].Vector),
-            logger, "embed-question");
+        var searchText = previousQuestion is null ? question : $"{previousQuestion}\n{question}";
+        var (generated, embedFailure) = await AiProviderCall.TryAsync(
+            () => embeddings.GenerateAsync([searchText], cancellationToken: ct), logger, "embed-question");
         if (embedFailure is not null)
             return (null, embedFailure);
+        await usage.RecordAsync(mode, UsageOperation.Embedding, embeddings.ModelName(), generated!.Usage, ct);
+        var questionVector = new Vector(generated[0].Vector);
 
-        var chunks = await RetrieveAsync(db, assistant.OrganizationId, questionVector!, ct);
+        var chunks = await RetrieveAsync(db, assistant.OrganizationId, questionVector, ct);
 
-        var messages = BuildPrompt(assistant.Name, assistant.Instructions, chunks, question);
+        var messages = BuildPrompt(assistant.Name, assistant.Instructions, chunks, question, previousQuestion);
         var (reply, chatFailure) = await AiProviderCall.TryAsync(
             () => chat.GetResponseAsync(messages, new ChatOptions { ResponseFormat = ChatResponseFormat.Json }, ct), logger, "chat");
         if (chatFailure is not null)
             return (null, chatFailure);
+        await usage.RecordAsync(mode, UsageOperation.Chat, chat.ModelName(), reply!.Usage, ct);
 
-        var (answer, found) = ParseReply(reply!.Text);
+        var (answer, found) = ParseReply(reply.Text);
         if (!found)
             await GapRecorder.RecordAsync(db, ownerId, assistant.OrganizationId, assistant.Id, question, logger, ct);
 
@@ -106,7 +116,7 @@ public static class AskPipeline
         return chunks;
     }
 
-    private static List<ChatMessage> BuildPrompt(string name, string? instructions, List<RetrievedChunk> chunks, string question)
+    private static List<ChatMessage> BuildPrompt(string name, string? instructions, List<RetrievedChunk> chunks, string question, string? previousQuestion)
     {
         var system = new StringBuilder()
             .AppendLine($"Você é \"{name}\", um assistente que responde usando somente os trechos de documentos fornecidos.")
@@ -128,6 +138,8 @@ public static class AskPipeline
             for (var i = 0; i < chunks.Count; i++)
                 user.AppendLine($"[{i + 1}] ({chunks[i].FileName}) {chunks[i].Content}");
         }
+        if (previousQuestion is not null)
+            user.AppendLine().AppendLine("Pergunta anterior da conversa (só contexto):").AppendLine(previousQuestion);
         user.AppendLine().AppendLine("Pergunta:").AppendLine(question);
 
         return [new ChatMessage(ChatRole.System, system.ToString()), new ChatMessage(ChatRole.User, user.ToString())];

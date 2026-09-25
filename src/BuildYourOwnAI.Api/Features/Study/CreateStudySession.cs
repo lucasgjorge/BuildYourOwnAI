@@ -24,7 +24,7 @@ public static class CreateStudySession
         organizations.MapPost("/{id:guid}/study-sessions", Handle).RequireRateLimiting(AskPipeline.RateLimitPolicy);
 
     private static async Task<IResult> Handle(
-        Guid id, Request request, AppDbContext db, IChatClient chat, ILoggerFactory loggerFactory, CancellationToken ct)
+        Guid id, Request request, AppDbContext db, IChatClient chat, IUsageRecorder usage, ILoggerFactory loggerFactory, CancellationToken ct)
     {
         var logger = loggerFactory.CreateLogger(typeof(CreateStudySession));
         var errors = new Dictionary<string, string[]>();
@@ -60,8 +60,9 @@ public static class CreateStudySession
             logger, "study-questions");
         if (failure is not null)
             return failure;
+        await usage.RecordAsync(UsageMode.Study, UsageOperation.Chat, chat.ModelName(), reply!.Usage, ct);
 
-        var generated = Parse(reply!.Text, chunks.Count);
+        var generated = Parse(reply.Text, chunks.Count);
         if (generated.Count == 0)
         {
             logger.LogWarning("Study generation returned no valid question for {ChunkCount} chunks", chunks.Count);

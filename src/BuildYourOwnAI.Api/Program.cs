@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using BuildYourOwnAI.Api.Features.Admin;
 using BuildYourOwnAI.Api.Features.Ask;
 using BuildYourOwnAI.Api.Features.Assistants;
 using BuildYourOwnAI.Api.Features.Auth;
@@ -11,6 +12,7 @@ using BuildYourOwnAI.Api.Infrastructure;
 using BuildYourOwnAI.Api.Infrastructure.Ai;
 using BuildYourOwnAI.Api.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddScoped<IUsageRecorder, UsageRecorder>();
 
 builder.Services.AddDbContext<AppDbContext>(options => options
     .UseNpgsql(builder.Configuration.GetConnectionString("Default"), npgsql => npgsql.UseVector())
@@ -28,7 +31,8 @@ builder.Services.AddDbContext<AppDbContext>(options => options
 builder.Services.AddDataProtection().SetApplicationName("BuildYourOwnAI");
 
 builder.Services.AddAuthorization();
-builder.Services.AddIdentityApiEndpoints<AppUser>().AddEntityFrameworkStores<AppDbContext>();
+// admin-usage door 3: roles go into the session cookie; a role granted later shows after logging in again.
+builder.Services.AddIdentityApiEndpoints<AppUser>().AddRoles<IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
 builder.Services.ConfigureApplicationCookie(cookie =>
 {
     cookie.Cookie.HttpOnly = true;
@@ -69,6 +73,10 @@ if (app.Environment.IsDevelopment())
     await DevAdminSeed.SeedAsync(scope.ServiceProvider, app.Configuration, app.Logger);
 }
 
+await using (var scope = app.Services.CreateAsyncScope())
+    await AdminRoleSeed.SeedAsync(scope.ServiceProvider, app.Configuration, app.Environment.IsDevelopment(), app.Logger);
+
+app.UseCorrelationId();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseDefaultFiles();
@@ -83,6 +91,7 @@ app.MapAssistantsEndpoints();
 app.MapRoutingEndpoints();
 app.MapGapsEndpoints();
 app.MapStudyEndpoints();
+app.MapAdminEndpoints();
 
 // Unknown /api routes are API 404s, never the SPA page (door 9).
 app.Map("/api/{**rest}", () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Rota não encontrada."));

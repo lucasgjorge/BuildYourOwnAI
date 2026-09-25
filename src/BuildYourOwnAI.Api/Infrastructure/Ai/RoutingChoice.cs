@@ -1,11 +1,16 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.AI;
 
 namespace BuildYourOwnAI.Api.Infrastructure.Ai;
 
-/// <summary>What was picked among the options given, how sure it is, and the distribution over all options.</summary>
-public sealed record RoutingChoice(string Choice, double Confidence, IReadOnlyDictionary<string, double> Probabilities);
+/// <summary>
+/// What was picked among the options given, how sure it is, and the distribution over all options; plus the model
+/// and the tokens the provider reported, for the usage record (admin-usage).
+/// </summary>
+public sealed record RoutingChoice(
+    string Choice, double Confidence, IReadOnlyDictionary<string, double> Probabilities, string Model = "unknown", UsageDetails? Usage = null);
 
 /// <summary>
 /// AD-012: the "choice" primitive behind the automatic choice of assistant. Handlers see only this; the HTTP contract of
@@ -41,7 +46,9 @@ public sealed class OpenRouterRoutingChoice(HttpClient http, string model) : IRo
         if (body?.Answers is null || !body.Answers.TryGetValue(QuestionKey, out var answer) || answer.Choice is null)
             throw new InvalidOperationException("Routing choice response has no answer for the question.");
 
-        return new RoutingChoice(answer.Choice, answer.Confidence, answer.Probabilities ?? new Dictionary<string, double>());
+        // OpenRouter reports usage in the OpenAI shape; a response without it is recorded with zero tokens.
+        var usage = body.Usage is { } u ? new UsageDetails { InputTokenCount = u.PromptTokens, OutputTokenCount = u.CompletionTokens } : null;
+        return new RoutingChoice(answer.Choice, answer.Confidence, answer.Probabilities ?? new Dictionary<string, double>(), model, usage);
     }
 
     private sealed record Request(
@@ -54,7 +61,13 @@ public sealed class OpenRouterRoutingChoice(HttpClient http, string model) : IRo
         [property: JsonPropertyName("instructions")] string Instructions,
         [property: JsonPropertyName("criteria")] IReadOnlyDictionary<string, string> Criteria);
 
-    private sealed record Response([property: JsonPropertyName("answers")] Dictionary<string, Answer>? Answers);
+    private sealed record Response(
+        [property: JsonPropertyName("answers")] Dictionary<string, Answer>? Answers,
+        [property: JsonPropertyName("usage")] Usage? Usage);
+
+    private sealed record Usage(
+        [property: JsonPropertyName("prompt_tokens")] long? PromptTokens,
+        [property: JsonPropertyName("completion_tokens")] long? CompletionTokens);
 
     private sealed record Answer(
         [property: JsonPropertyName("choice")] string? Choice,

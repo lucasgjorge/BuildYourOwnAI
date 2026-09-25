@@ -14,6 +14,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Gap> Gaps => Set<Gap>();
     public DbSet<StudySession> StudySessions => Set<StudySession>();
     public DbSet<StudyQuestion> StudyQuestions => Set<StudyQuestion>();
+    public DbSet<AiUsage> AiUsages => Set<AiUsage>();
 
     // Read per query by the global filters below; EF parameterizes it per DbContext instance.
     private string? CurrentUserId => currentUser.Id;
@@ -96,6 +97,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             e.HasOne(q => q.Document).WithMany().HasForeignKey(q => q.DocumentId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(q => new { q.SessionId, q.Position }).IsUnique();
             e.HasQueryFilter(q => q.Session.Organization.OwnerId == CurrentUserId);
+        });
+
+        // admin-usage door 1: no owner filter - only the admin report reads it, across every user.
+        builder.Entity<AiUsage>(e =>
+        {
+            e.ToTable("ai_usage", t =>
+            {
+                t.HasCheckConstraint("ck_ai_usage_mode", "mode in ('ask', 'routing', 'study', 'upload', 'gap')");
+                t.HasCheckConstraint("ck_ai_usage_operation", "operation in ('chat', 'embedding', 'choice')");
+            });
+            e.Property(u => u.CorrelationId).HasMaxLength(AiUsage.CorrelationIdMaxLength);
+            e.Property(u => u.Mode).HasConversion(m => m.ToString().ToLowerInvariant(), m => Enum.Parse<UsageMode>(m, true)).HasMaxLength(16);
+            e.Property(u => u.Operation).HasConversion(o => o.ToString().ToLowerInvariant(), o => Enum.Parse<UsageOperation>(o, true)).HasMaxLength(16);
+            e.Property(u => u.Model).HasMaxLength(AiUsage.ModelMaxLength);
+            e.Property(u => u.CostUsd).HasPrecision(12, 6);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(u => u.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(u => u.OccurredAt);
+            e.HasIndex(u => new { u.UserId, u.OccurredAt });
         });
     }
 }

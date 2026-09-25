@@ -150,6 +150,32 @@ describe('organization chat', () => {
     expect(within(answer).getByRole('button', { name: 'Perguntar a Culture' })).toBeInTheDocument()
   })
 
+  it('follow-up is routed with the last answer as context', async () => {
+    const sent: unknown[] = []
+    server.use(
+      ...chatApi(),
+      http.post('*/api/organizations/o1/route/ask', async ({ request }) => {
+        sent.push(await request.json())
+        return HttpResponse.json(answered(ref('rh', 'RH'), `Resposta ${sent.length}.`))
+      }),
+      http.post('*/api/assistants/culture/ask', () => HttpResponse.json({ answer: 'Resposta da Culture.', found: true, sources: [] })),
+    )
+    const { user } = renderApp('/organizations/o1')
+
+    await send(user, 'Como peço férias?')
+    await screen.findByText('Resposta 1.')
+    await user.click(screen.getByRole('button', { name: 'Perguntar a Culture' }))
+    await screen.findByText('Resposta da Culture.')
+    await send(user, 'E quantos dias?')
+
+    expect(await screen.findByText('Resposta 2.')).toBeInTheDocument()
+    expect(screen.getAllByText('você → automático')).toHaveLength(2)
+    expect(sent).toEqual([
+      { question: 'Como peço férias?' },
+      { question: 'E quantos dias?', previous: { question: 'Como peço férias?', assistantId: 'culture' } },
+    ])
+  })
+
   // C13
   it('asking an alternative appends to the thread', async () => {
     const asked: unknown[] = []

@@ -21,6 +21,7 @@ public static class AnswerGap
         Request request,
         AppDbContext db,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
+        IUsageRecorder usage,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
@@ -52,7 +53,7 @@ public static class AnswerGap
         var question = gap.Question;
         var fileName = $"Lacuna - {(question.Length <= FileNameQuestionLength ? question : question[..FileNameQuestionLength])}.md";
         var content = Encoding.UTF8.GetBytes($"# Pergunta\n{question}\n\n# Resposta\n{answer}\n");
-        var (document, failure) = await DocumentIngestion.PrepareAsync(db, embeddings, organizationId.Value, fileName, content, logger, ct);
+        var (document, failure) = await DocumentIngestion.PrepareAsync(db, embeddings, usage, UsageMode.Gap, organizationId.Value, fileName, content, logger, ct);
         if (failure is not null)
             return failure;
 

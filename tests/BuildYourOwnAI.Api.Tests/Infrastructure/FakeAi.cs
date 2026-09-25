@@ -29,6 +29,9 @@ public static class FakeAiTriggers
 public sealed partial class FakeEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>>
 {
     public const int Dimensions = 1536;
+    public const string Model = "text-embedding-3-small";
+    /// <summary>Usage the fake reports: this many input tokens per text embedded.</summary>
+    public const int TokensPerText = 7;
 
     private readonly Lock _rendezvousLock = new();
     private TaskCompletionSource? _rendezvousWaiter;
@@ -42,7 +45,10 @@ public sealed partial class FakeEmbeddingGenerator : IEmbeddingGenerator<string,
         if (list.Any(v => v.Contains(FakeAiTriggers.Rendezvous)))
             await RendezvousAsync();
 
-        return new GeneratedEmbeddings<Embedding<float>>(list.Select(v => new Embedding<float>(Embed(v))));
+        return new GeneratedEmbeddings<Embedding<float>>(list.Select(v => new Embedding<float>(Embed(v))))
+        {
+            Usage = new UsageDetails { InputTokenCount = TokensPerText * list.Count },
+        };
     }
 
     private Task RendezvousAsync()
@@ -89,12 +95,20 @@ public sealed partial class FakeEmbeddingGenerator : IEmbeddingGenerator<string,
     [GeneratedRegex(@"[\p{L}\p{N}_]+")]
     private static partial Regex Word();
 
-    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public object? GetService(Type serviceType, object? serviceKey = null) =>
+        serviceType == typeof(EmbeddingGeneratorMetadata) ? new EmbeddingGeneratorMetadata("fake", null, Model, Dimensions) : null;
     public void Dispose() { }
 }
 
 public sealed partial class FakeChatClient : IChatClient
 {
+    public const string Model = "gpt-4.1-mini";
+    public const int InputTokens = 120;
+    public const int OutputTokens = 30;
+
+    private static ChatResponse Reply(string text) =>
+        new(new ChatMessage(ChatRole.Assistant, text)) { Usage = new UsageDetails { InputTokenCount = InputTokens, OutputTokenCount = OutputTokens } };
+
     public ConcurrentQueue<IReadOnlyList<ChatMessage>> Calls { get; } = new();
 
     public Task<ChatResponse> GetResponseAsync(
@@ -107,14 +121,14 @@ public sealed partial class FakeChatClient : IChatClient
 
         var text = string.Join("\n", list.Select(m => m.Text));
         if (text.Contains(StudyPromptMarker))
-            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, (StudyReply ?? DefaultStudyReply)(text))));
+            return Task.FromResult(Reply((StudyReply ?? DefaultStudyReply)(text)));
 
         var reply = text.Contains(FakeAiTriggers.NotFound)
             ? JsonSerializer.Serialize(new { answer = FakeAiTriggers.NotFoundAnswer, found = false })
             : text.Contains(FakeAiTriggers.Found)
                 ? JsonSerializer.Serialize(new { answer = FakeAiTriggers.FoundAnswer, found = true })
                 : "fake answer";
-        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
+        return Task.FromResult(Reply(reply));
     }
 
     public bool ReceivedCallContaining(string marker) => Calls.Any(c => c.Any(m => m.Text.Contains(marker)));
@@ -153,7 +167,8 @@ public sealed partial class FakeChatClient : IChatClient
         IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
-    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public object? GetService(Type serviceType, object? serviceKey = null) =>
+        serviceType == typeof(ChatClientMetadata) ? new ChatClientMetadata("fake", null, Model) : null;
     public void Dispose() { }
 }
 
@@ -165,6 +180,11 @@ public sealed partial class FakeChatClient : IChatClient
 public sealed partial class FakeRouterClient : IRoutingChoice
 {
     public const string OutputMarker = "router-output-5d1c";
+    public const string Model = "jev-latest";
+    public const int InputTokens = 50;
+    public const int OutputTokens = 5;
+
+    private static readonly UsageDetails Usage = new() { InputTokenCount = InputTokens, OutputTokenCount = OutputTokens };
 
     public ConcurrentQueue<string> Calls { get; } = new();
 
@@ -182,7 +202,7 @@ public sealed partial class FakeRouterClient : IRoutingChoice
         return Task.FromResult(behaviour switch
         {
             "THROW" => throw new HttpRequestException(FakeAiTriggers.ProviderSecretMessage),
-            "TEXT" => new RoutingChoice(OutputMarker, 1, new Dictionary<string, double>()),
+            "TEXT" => new RoutingChoice(OutputMarker, 1, new Dictionary<string, double>(), Model, Usage),
             "NONE" => Pick(criteria, "nenhuma", 0.9),
             "NONELOW" => Pick(criteria, "nenhuma", 0.3),
             _ when behaviour.StartsWith("LOW") => Pick(criteria, behaviour[3..], 0.3),
@@ -197,7 +217,7 @@ public sealed partial class FakeRouterClient : IRoutingChoice
         var share = others.Count == 0 ? 0 : Math.Min((1 - confidence) / others.Count, confidence / 2);
         var probabilities = others.ToDictionary(k => k, _ => share);
         probabilities[key] = confidence;
-        return new RoutingChoice(key, confidence, probabilities);
+        return new RoutingChoice(key, confidence, probabilities, Model, Usage);
     }
 
     public string PromptContaining(string marker) => Calls.Single(c => c.Contains(marker));

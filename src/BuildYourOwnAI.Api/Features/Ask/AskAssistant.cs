@@ -21,6 +21,7 @@ public static class AskAssistant
         ICurrentUser currentUser,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
         IChatClient chat,
+        IUsageRecorder usage,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
@@ -36,7 +37,7 @@ public static class AskAssistant
         if (assistant is null)
             return Problems.AssistantNotFound();
 
-        var (answer, failure) = await AskPipeline.AnswerAsync(db, assistant, question, currentUser.Id!, embeddings, chat, logger, ct);
+        var (answer, failure) = await AskPipeline.AnswerAsync(db, assistant, question, currentUser.Id!, embeddings, chat, usage, UsageMode.Ask, logger, ct);
         return failure ?? TypedResults.Ok(new Response(answer!.Text, answer.Found, answer.Sources));
     }
 }

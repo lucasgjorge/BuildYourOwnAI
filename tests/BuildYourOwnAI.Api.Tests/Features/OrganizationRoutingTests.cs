@@ -165,6 +165,54 @@ public sealed class OrganizationRoutingTests(ApiFactory factory) : ApiTestBase(f
         }
     }
 
+    [Fact]
+    public async Task Follow_up_is_routed_with_the_previous_turn()
+    {
+        var client = await NewUserClientAsync();
+        var nexora = await CreateOrganizationAsync(client, "Nexora");
+        // Offered by name: 1 = Culture, 2 = RH.
+        await CreateAssistantInAsync(client, nexora, "Culture", routingDescription: "cultura da empresa");
+        var hr = await CreateAssistantInAsync(client, nexora, "RH", routingDescription: "processos de RH");
+        var stranger = await NewUserClientAsync();
+        var foreign = await CreateAssistantInAsync(stranger, await CreateOrganizationAsync(stranger), "Alheia", routingDescription: "x");
+        await UploadOkAsync(client, nexora, "rh.txt", "ferias sao pedidas pelo portal com trinta dias");
+        var previous = $"como peço ferias {Marker()}";
+        var question = $"e quantos dias {Marker()} {FakeAiTriggers.Route(2)}";
+
+        var response = await client.PostAsJsonAsync($"/api/organizations/{nexora}/route/ask",
+            new { question, previous = new { question = previous, assistantId = hr } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(hr, (await JsonAsync(response)).GetProperty("assistant").GetProperty("id").GetGuid());
+        var routed = Factory.Router.PromptContaining(question);
+        Assert.Contains($"Pergunta anterior (respondida por RH): {previous}", routed);
+        Assert.Contains($"Pergunta atual: {question}", routed);
+        Assert.Contains(previous, Factory.Chat.PromptContaining(question));
+        // Only the current question can become a gap; the previous one is context.
+        Assert.Equal(0, await ScalarAsync("select count(*) from gaps where question like @q", ("q", $"%{previous}%")));
+
+        // An assistant id the user does not own names nobody.
+        var other = $"e agora {Marker()}";
+        await client.PostAsJsonAsync($"/api/organizations/{nexora}/route/ask",
+            new { question = other, previous = new { question = previous, assistantId = foreign } });
+        Assert.DoesNotContain("Alheia", Factory.Router.PromptContaining(other));
+        Assert.Contains($"Pergunta anterior: {previous}", Factory.Router.PromptContaining(other));
+    }
+
+    [Fact]
+    public async Task Too_long_previous_question_is_rejected()
+    {
+        var client = await NewUserClientAsync();
+        var nexora = await CreateOrganizationAsync(client, "Nexora");
+        await CreateAssistantInAsync(client, nexora, "RH", routingDescription: "processos de RH");
+
+        var response = await client.PostAsJsonAsync($"/api/organizations/{nexora}/route/ask",
+            new { question = "e quantos dias", previous = new { question = new string('a', 2001), assistantId = (Guid?)null } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True((await JsonAsync(response)).GetProperty("errors").TryGetProperty("previous.question", out _));
+    }
+
     // C7
     [Fact]
     public async Task Shares_rate_limit_with_ask_and_all_assistants_routing()

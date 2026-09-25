@@ -49,6 +49,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "true");
         builder.UseSetting(WebHostDefaults.WebRootKey, _webRoot);
+        // admin-usage: prices for the fakes' chat and embedding models; the router's model stays unpriced.
+        builder.UseSetting($"AI:Pricing:{FakeChatClient.Model}:InputPerMillion", "0.40");
+        builder.UseSetting($"AI:Pricing:{FakeChatClient.Model}:OutputPerMillion", "1.60");
+        builder.UseSetting($"AI:Pricing:{FakeEmbeddingGenerator.Model}:InputPerMillion", "10");
+        builder.UseSetting($"AI:Pricing:{FakeEmbeddingGenerator.Model}:OutputPerMillion", "0");
 
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
 

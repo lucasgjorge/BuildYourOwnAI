@@ -19,6 +19,8 @@ public static class DocumentIngestion
     public static async Task<(Document? Document, IResult? Failure)> PrepareAsync(
         AppDbContext db,
         IEmbeddingGenerator<string, Embedding<float>> embeddings,
+        IUsageRecorder usage,
+        UsageMode mode,
         Guid organizationId,
         string fileName,
         byte[] content,
@@ -35,7 +37,7 @@ public static class DocumentIngestion
                 statusCode: StatusCodes.Status422UnprocessableEntity,
                 title: "Não foi possível extrair texto do arquivo (PDF escaneado?)."));
 
-        var (vectors, failure) = await AiProviderCall.TryAsync(() => EmbedAsync(embeddings, chunks, ct), logger, "embed-document");
+        var (vectors, failure) = await AiProviderCall.TryAsync(() => EmbedAsync(embeddings, usage, mode, chunks, ct), logger, "embed-document");
         if (failure is not null)
             return (null, failure);
 
@@ -58,12 +60,15 @@ public static class DocumentIngestion
         Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Este arquivo já foi anexado a esta organização.");
 
     private static async Task<List<Vector>> EmbedAsync(
-        IEmbeddingGenerator<string, Embedding<float>> embeddings, IReadOnlyList<string> chunks, CancellationToken ct)
+        IEmbeddingGenerator<string, Embedding<float>> embeddings, IUsageRecorder usage, UsageMode mode, IReadOnlyList<string> chunks,
+        CancellationToken ct)
     {
         var vectors = new List<Vector>(chunks.Count);
         foreach (var batch in chunks.Chunk(EmbeddingBatchSize))
         {
             var generated = await embeddings.GenerateAsync(batch, cancellationToken: ct);
+            // Each batch is a paid call: a later batch failing does not undo the usage of the ones before it.
+            await usage.RecordAsync(mode, UsageOperation.Embedding, embeddings.ModelName(), generated.Usage, ct);
             vectors.AddRange(generated.Select(e => new Vector(e.Vector)));
         }
         return vectors;

@@ -3,6 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using BuildYourOwnAI.Api.Infrastructure;
+using BuildYourOwnAI.Api.Infrastructure.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
@@ -19,12 +23,45 @@ public abstract class ApiTestBase(ApiFactory factory)
 
     protected static string NewEmail() => $"user-{Guid.NewGuid():N}@test.local";
 
-    protected async Task<HttpClient> NewUserClientAsync()
+    protected async Task<HttpClient> NewUserClientAsync() => (await NewUserAsync()).Client;
+
+    /// <summary>A registered, logged-in user, with the email and id the usage report is keyed by.</summary>
+    protected async Task<(HttpClient Client, string Email, string UserId)> NewUserAsync()
     {
         var client = Factory.CreateHttpsClient();
         var email = NewEmail();
         (await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, fullName = "Usuário de Teste" })).EnsureSuccessStatusCode();
+        await LoginAsync(client, email);
+        return (client, email, await UserIdAsync(email));
+    }
+
+    protected static async Task LoginAsync(HttpClient client, string email) =>
         (await client.PostAsJsonAsync("/api/auth/login?useCookies=true", new { email, password = Password })).EnsureSuccessStatusCode();
+
+    protected async Task<string> UserIdAsync(string email)
+    {
+        await using var connection = new NpgsqlConnection(Factory.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("select id from \"AspNetUsers\" where normalized_email = upper(@e)", connection);
+        command.Parameters.AddWithValue("e", email);
+        return (string)(await command.ExecuteScalarAsync())!;
+    }
+
+    /// <summary>Gives the account the Admin role directly; the session sees it after logging in again.</summary>
+    protected async Task GrantAdminAsync(string email)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var user = await users.FindByEmailAsync(email) ?? throw new InvalidOperationException("no such user");
+        Assert.True((await users.AddToRoleAsync(user, AdminRoleSeed.Role)).Succeeded);
+    }
+
+    /// <summary>A logged-in account that has the Admin role in its session.</summary>
+    protected async Task<HttpClient> NewAdminClientAsync()
+    {
+        var (client, email, _) = await NewUserAsync();
+        await GrantAdminAsync(email);
+        await LoginAsync(client, email);
         return client;
     }
 

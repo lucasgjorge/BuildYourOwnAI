@@ -123,3 +123,42 @@ public sealed class StudyQuestion
     public short? ChosenOption { get; set; }
     public DateTimeOffset? AnsweredAt { get; set; }
 }
+
+/// <summary>How the user was using the product when an AI call was made (admin-usage).</summary>
+public enum UsageMode
+{
+    Ask,
+    Routing,
+    Study,
+    Upload,
+    Gap,
+}
+
+public enum UsageOperation
+{
+    Chat,
+    Embedding,
+    Choice,
+}
+
+/// <summary>
+/// One AI call (admin-usage door 1): who, when, in which mode, the tokens the provider reported and the cost priced
+/// at call time. Never carries the text sent or received.
+/// </summary>
+public sealed class AiUsage
+{
+    public const int CorrelationIdMaxLength = 64;
+    public const int ModelMaxLength = 100;
+
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public required string UserId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+    public required string CorrelationId { get; init; }
+    public UsageMode Mode { get; init; }
+    public UsageOperation Operation { get; init; }
+    public required string Model { get; init; }
+    public int InputTokens { get; init; }
+    public int OutputTokens { get; init; }
+    /// <summary>Null when the model has no price in <c>AI:Pricing</c>.</summary>
+    public decimal? CostUsd { get; init; }
+}
