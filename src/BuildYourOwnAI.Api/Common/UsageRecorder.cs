@@ -11,7 +11,7 @@ namespace BuildYourOwnAI.Api.Common;
 /// </summary>
 public interface IUsageRecorder
 {
-    Task RecordAsync(UsageMode mode, UsageOperation operation, string model, UsageDetails? usage, CancellationToken ct);
+    Task RecordAsync(UsageMode mode, UsageOperation operation, string model, UsageDetails? usage, CancellationToken ct, Guid? conversationId = null);
 }
 
 public sealed class UsageRecorder(
@@ -21,7 +21,7 @@ public sealed class UsageRecorder(
     IOptions<AiOptions> ai,
     ILogger<UsageRecorder> logger) : IUsageRecorder
 {
-    public async Task RecordAsync(UsageMode mode, UsageOperation operation, string model, UsageDetails? usage, CancellationToken ct)
+    public async Task RecordAsync(UsageMode mode, UsageOperation operation, string model, UsageDetails? usage, CancellationToken ct, Guid? conversationId = null)
     {
         try
         {
@@ -30,6 +30,7 @@ public sealed class UsageRecorder(
             var usageRow = new AiUsage
             {
                 UserId = currentUser.Id ?? throw new InvalidOperationException("AI call without a logged-in user."),
+                ConversationId = conversationId,
                 CorrelationId = CorrelationId.Get(httpContext.HttpContext) ?? Guid.NewGuid().ToString(),
                 Mode = mode,
                 Operation = operation,

@@ -115,7 +115,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             e.HasOne<AppUser>().WithMany().HasForeignKey(u => u.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(u => u.OccurredAt);
             e.HasIndex(u => new { u.UserId, u.OccurredAt });
+            e.HasIndex(u => new { u.ConversationId, u.OccurredAt });
         });
     }
 }
-

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, postJson } from '../../shared/api/client'
 import { organizationKeys } from '../organizations/api'
+import { conversationUsageKeys } from '../chat/api'
 import type { Assistant, CreateAssistantRequest } from './types'
 import type { AskResponse } from '../../shared/api/types'
 
@@ -32,8 +33,12 @@ export function useDeleteAssistant() {
 export function useAsk() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ assistantId, question }: { assistantId: string; question: string }) =>
-      postJson<AskResponse>(`/api/assistants/${assistantId}/ask`, { question }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gaps'] }),
+    mutationFn: ({ assistantId, question, conversationId }: { assistantId: string; question: string; conversationId?: string }) =>
+      postJson<AskResponse>(`/api/assistants/${assistantId}/ask`, { question, conversationId }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['gaps'] })
+      if (variables.conversationId)
+        return queryClient.invalidateQueries({ queryKey: conversationUsageKeys.one(variables.conversationId) })
+    },
   })
 }

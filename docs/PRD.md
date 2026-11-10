@@ -47,7 +47,7 @@ O "tenant" continua sendo o usuário individual. Ele já agrupa as IAs em **orga
 | Etapa | Objetivo | Principais capacidades |
 | --- | --- | --- |
 | **1 - RAG MVP** (entregue) | provar o ciclo criar → anexar → perguntar | login e-mail/senha; CRUD de IAs; upload PDF/TXT/MD até 10 MB; pergunta com resposta e fontes; UI mínima |
-| **1b - Organizações, escolha automática e Lacunas** (entregue) | várias IAs sobre o mesmo material, sem escolher na mão | organizações com documentos compartilhados; escolha automática por organização e entre todas (primitiva "choice" da TypeSafe via OpenRouter, modelo `jev-latest`); prévia do trecho citado; Study Mode com correção e trecho de origem; caixa de Lacunas; chat da organização como tela principal; página inicial pública |
+| **1b - Organizações, escolha automática e Lacunas** (entregue) | várias IAs sobre o mesmo material, sem escolher na mão | organizações com documentos compartilhados; escolha automática por organização e entre todas (primitiva "choice" da TypeSafe via OpenRouter, modelo `jev-latest`); prévia do trecho citado; Study Mode com correção e trecho de origem; caixa de Lacunas; chat da organização como tela principal; consulta do uso de tokens por conversa no chat; página inicial pública |
 | 2 - Conversa | experiência de chat real | histórico persistido e multi-turno (hoje a thread vive só na tela), streaming, ingestão em background para arquivos grandes, mais formatos (DOCX, HTML, URL) |
 | 3 - Publicar | a IA sai da plataforma | link público do chat da organização (com a escolha automática), widget embutível, WhatsApp, API key |
 | 4 - Monetizar | receita | planos, quotas de uso (perguntas, armazenamento), cobrança |

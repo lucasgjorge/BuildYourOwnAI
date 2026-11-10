@@ -32,6 +32,10 @@ namespace BuildYourOwnAI.Api.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
                     b.Property<string>("CorrelationId")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -83,6 +87,9 @@ namespace BuildYourOwnAI.Api.Infrastructure.Data.Migrations
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("ix_ai_usage_occurred_at");
+
+                    b.HasIndex("ConversationId", "OccurredAt")
+                        .HasDatabaseName("ix_ai_usage_conversation_id_occurred_at");
 
                     b.HasIndex("UserId", "OccurredAt")
                         .HasDatabaseName("ix_ai_usage_user_id_occurred_at");

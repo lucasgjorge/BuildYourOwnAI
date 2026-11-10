@@ -7,6 +7,7 @@ import { Button } from '../../shared/ui'
 import { useAsk } from '../assistants/api'
 import { useRouting } from '../routing/api'
 import type { AssistantRef } from '../routing/types'
+import { useConversationUsage } from './api'
 
 /** An AI the thread can talk to, with its lane color. */
 type Target = { id: string; name: string; organizationName: string; color: string; routing?: string | null }
@@ -49,9 +50,12 @@ export function Thread(props: Props) {
   const routing = useRouting(organizationId)
   const ask = useAsk()
   const [entries, setEntries] = useState<Entry[]>([])
+  const [conversationId] = useState(() => crypto.randomUUID())
   const [message, setMessage] = useState('')
   const [target, setTarget] = useState(props.scope === 'organization' && props.pinnedId ? props.pinnedId : AUTO)
   const [pending, setPending] = useState<string | null>(null)
+  const [usageOpen, setUsageOpen] = useState(false)
+  const usage = useConversationUsage(conversationId, usageOpen)
   const nextKey = useRef(0)
 
   const known: Target[] = props.scope === 'organization'
@@ -83,7 +87,7 @@ export function Thread(props: Props) {
   // `replacing`: the clarify prompt the answer takes the place of, once an AI was picked from it.
   const askDirect = (question: string, to: Target, others: Target[], replacing?: number) => {
     setPending(`${to.name} está respondendo…`)
-    ask.mutate({ assistantId: to.id, question }, {
+    ask.mutate({ assistantId: to.id, question, conversationId }, {
       onSuccess: answer => {
         if (replacing !== undefined) setEntries(current => current.filter(e => e.key !== replacing))
         showAnswer({ kind: 'answer', question, by: to, routed: false, answer, others })
@@ -112,7 +116,7 @@ export function Thread(props: Props) {
 
     push({ kind: 'question', text: question, to: 'automático' })
     setPending('Escolhendo quem responde…')
-    routing.mutate({ question, previous }, {
+    routing.mutate({ question, previous, conversationId }, {
       onSuccess: response => {
         if (response.kind === 'answered')
           showAnswer({
@@ -221,6 +225,11 @@ export function Thread(props: Props) {
               ))}
             </fieldset>
           )}
+          <div className="flex justify-end">
+            <Button type="button" tone="quiet" onClick={() => setUsageOpen(true)}>
+              Uso de tokens
+            </Button>
+          </div>
           <div className="flex items-end gap-3">
             <label className="flex-1">
               <span className="sr-only">Mensagem</span>
@@ -237,9 +246,53 @@ export function Thread(props: Props) {
           </div>
         </div>
       </form>
+      {usageOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4" onClick={event => {
+          if (event.target === event.currentTarget) setUsageOpen(false)
+        }}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="conversation-usage-title"
+            className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-xl"
+          >
+            <header className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="conversation-usage-title" className="font-display text-xl font-bold">Uso de tokens</h2>
+                <p className="mt-1 text-sm text-muted">Consumo nesta conversa</p>
+              </div>
+              <Button type="button" tone="quiet" onClick={() => setUsageOpen(false)} aria-label="Fechar uso de tokens">
+                Fechar
+              </Button>
+            </header>
+            {usage.isPending ? (
+              <p className="mt-6 text-sm text-muted" role="status">Carregando uso…</p>
+            ) : usage.isError ? (
+              <p className="mt-6 text-sm text-danger" role="alert">{errorTitle(usage.error)}</p>
+            ) : (
+              <dl className="mt-6 grid grid-cols-2 gap-3">
+                <div className="col-span-2 rounded-lg bg-fog p-4">
+                  <dt className="text-sm text-muted">Total de tokens</dt>
+                  <dd className="mt-1 font-mono text-2xl font-semibold">{formatTokens(usage.data.totalTokens)}</dd>
+                </div>
+                <div className="rounded-lg border border-line p-3">
+                  <dt className="text-xs text-muted">Entrada</dt>
+                  <dd className="mt-1 font-mono font-semibold">{formatTokens(usage.data.inputTokens)}</dd>
+                </div>
+                <div className="rounded-lg border border-line p-3">
+                  <dt className="text-xs text-muted">Saída</dt>
+                  <dd className="mt-1 font-mono font-semibold">{formatTokens(usage.data.outputTokens)}</dd>
+                </div>
+              </dl>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   )
 }
+
+const formatTokens = (tokens: number) => new Intl.NumberFormat('pt-BR').format(tokens)
 
 function Guide({ targets }: { targets: Target[] }) {
   return (

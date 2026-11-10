@@ -152,6 +152,7 @@ public sealed class AiUsage
 
     public Guid Id { get; init; } = Guid.CreateVersion7();
     public required string UserId { get; init; }
+    public Guid? ConversationId { get; init; }
     public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
     public required string CorrelationId { get; init; }
     public UsageMode Mode { get; init; }
