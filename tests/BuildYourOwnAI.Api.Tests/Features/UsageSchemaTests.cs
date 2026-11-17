@@ -39,7 +39,7 @@ public sealed class UsageSchemaTests(ApiFactory factory) : ApiTestBase(factory)
         var (_, _, userId) = await NewUserAsync();
 
         Assert.Equal(
-            "correlation_id:character varying:64:NO|cost_usd:numeric::YES|input_tokens:integer::NO|mode:character varying:16:NO|" +
+            "conversation_id:uuid::YES|correlation_id:character varying:64:NO|cost_usd:numeric::YES|input_tokens:integer::NO|mode:character varying:16:NO|" +
             "model:character varying:100:NO|occurred_at:timestamp with time zone::NO|operation:character varying:16:NO|" +
             "output_tokens:integer::NO|user_id:text::NO",
             await StringAsync("""
@@ -55,6 +55,7 @@ public sealed class UsageSchemaTests(ApiFactory factory) : ApiTestBase(factory)
         var indexes = await StringAsync("select string_agg(indexdef, ' | ') from pg_indexes where tablename = 'ai_usage'");
         Assert.Contains(indexes!.Split(" | "), d => d.EndsWith("(occurred_at)"));
         Assert.Contains(indexes.Split(" | "), d => d.EndsWith("(user_id, occurred_at)"));
+        Assert.Contains(indexes.Split(" | "), d => d.EndsWith("(conversation_id, occurred_at)"));
 
         Assert.Equal("ck_ai_usage_mode", await InsertErrorAsync(userId, "outro", "chat"));
         Assert.Equal("ck_ai_usage_operation", await InsertErrorAsync(userId, "ask", "outro"));

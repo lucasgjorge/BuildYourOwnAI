@@ -31,6 +31,8 @@ function chatApi() {
     http.get('*/api/organizations', () => HttpResponse.json([summary(nexora), summary(acme)])),
     http.get('*/api/organizations/o1', () => HttpResponse.json(nexora)),
     http.get('*/api/organizations/o2', () => HttpResponse.json(acme)),
+    http.get('*/api/usage/conversations/:conversationId', () =>
+      HttpResponse.json({ inputTokens: 1234, outputTokens: 567, totalTokens: 1801 })),
     http.get('*/api/organizations/:org/documents/:doc/chunks/:index', ({ params }) =>
       HttpResponse.json({ documentId: params.doc, fileName: 'doc.txt', chunkCount: 8, chunks: [{ index: Number(params.index), content: 'trecho' }] })),
     http.get('*/api/assistants/culture', () =>
@@ -129,6 +131,21 @@ describe('entering the product', () => {
 })
 
 describe('organization chat', () => {
+  it('opens token usage from the chat and shows input, output, and total', async () => {
+    server.use(...chatApi())
+    const { user } = renderApp('/organizations/o1')
+
+    await user.click(await screen.findByRole('button', { name: 'Uso de tokens' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Uso de tokens' })
+    expect(within(dialog).getByText('Consumo nesta conversa')).toBeInTheDocument()
+    expect(within(dialog).getByText('1.801')).toBeInTheDocument()
+    expect(within(dialog).getByText('1.234')).toBeInTheDocument()
+    expect(within(dialog).getByText('567')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Fechar uso de tokens' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   // C12
   it('chat sends to organization routing and shows who answered', async () => {
     const sent: unknown[] = []
@@ -141,7 +158,11 @@ describe('organization chat', () => {
     await send(user, 'Como peço férias?')
 
     const answer = (await screen.findByText('Pelo portal, com 30 dias de antecedência.')).closest('article')!
-    expect(sent).toEqual([{ question: 'Como peço férias?' }])
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ question: 'Como peço férias?' })
+    expect((sent[0] as { conversationId: string }).conversationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    )
     expect(within(thread()).getByText('Como peço férias?')).toBeInTheDocument()
     expect(within(answer).getByText('Respondido por RH')).toBeInTheDocument()
     expect(within(answer).getByText('escolha automática')).toBeInTheDocument()
@@ -170,9 +191,11 @@ describe('organization chat', () => {
 
     expect(await screen.findByText('Resposta 2.')).toBeInTheDocument()
     expect(screen.getAllByText('você → automático')).toHaveLength(2)
+    expect(sent).toHaveLength(2)
+    const conversationId = (sent[0] as { conversationId: string }).conversationId
     expect(sent).toEqual([
-      { question: 'Como peço férias?' },
-      { question: 'E quantos dias?', previous: { question: 'Como peço férias?', assistantId: 'culture' } },
+      { question: 'Como peço férias?', conversationId },
+      { question: 'E quantos dias?', previous: { question: 'Como peço férias?', assistantId: 'culture' }, conversationId },
     ])
   })
 
@@ -195,7 +218,9 @@ describe('organization chat', () => {
     expect(await screen.findByText('Resposta da Culture.')).toBeInTheDocument()
     expect(screen.getByText('Respondido por RH')).toBeInTheDocument()
     expect(screen.getByText('Respondido por Culture')).toBeInTheDocument()
-    expect(asked).toEqual([{ question: 'Como peço férias?' }])
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatchObject({ question: 'Como peço férias?' })
+    expect((asked[0] as { conversationId: string }).conversationId).toBeTruthy()
     // Appended, in the order they happened: the question, RH's answer, then Culture's.
     const entries = Array.from(thread().children).map(e => e.textContent ?? '')
     expect(entries).toHaveLength(3)

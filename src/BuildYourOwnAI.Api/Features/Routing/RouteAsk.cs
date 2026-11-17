@@ -19,7 +19,7 @@ public static class RouteAsk
     private const string NoneDescription = "Nenhuma dessas IAs: a pergunta é sobre outro assunto";
 
     /// <summary><paramref name="Previous"/>: the thread's last answered turn, so a follow-up ("e quantos dias?") can be routed.</summary>
-    public sealed record Request(string? Question, PreviousTurn? Previous = null);
+    public sealed record Request(string? Question, PreviousTurn? Previous = null, Guid? ConversationId = null);
 
     public sealed record PreviousTurn(string? Question, Guid? AssistantId);
 
@@ -112,7 +112,7 @@ public static class RouteAsk
         var state = previousQuestion is null
             ? question
             : await WithPreviousAsync(db, organizationId, question, previousQuestion, request.Previous!.AssistantId, ct);
-        var decision = await ChooseAsync(routing, usage, settings, eligible, state, logger, ct);
+        var decision = await ChooseAsync(routing, usage, settings, eligible, state, logger, ct, request.ConversationId);
         if (decision is null)
             return Outcome(logger, eligible.Count, new Response("clarify", Candidates: Refs(eligible, MaxFallbackCandidates)));
 
@@ -128,7 +128,7 @@ public static class RouteAsk
 
         var (answer, failure) = await AskPipeline.AnswerAsync(
             db, new AskPipeline.Target(chosen.Id, chosen.OrganizationId, chosen.Name, chosen.Instructions),
-            question, currentUser.Id!, embeddings, chat, usage, UsageMode.Routing, logger, ct, previousQuestion);
+            question, currentUser.Id!, embeddings, chat, usage, UsageMode.Routing, logger, ct, previousQuestion, request.ConversationId);
         if (failure is not null)
             return failure;
 
@@ -165,7 +165,7 @@ public static class RouteAsk
     /// <summary>Asks the choice primitive; null when the call failed or it picked a key it was not given (fallback to clarify).</summary>
     private static async Task<Decision?> ChooseAsync(
         IRoutingChoice routing, IUsageRecorder usage, AiOptions.RoutingSection settings, List<Eligible> eligible, string state,
-        ILogger logger, CancellationToken ct)
+        ILogger logger, CancellationToken ct, Guid? conversationId)
     {
         // Options are keyed by position, never by id, plus an explicit "none of them".
         // Only names, organizations and "when to use" go out: never instructions or documents.
@@ -184,7 +184,7 @@ public static class RouteAsk
             logger.LogWarning("Routing call failed with {ExceptionType}", ex.GetType().Name);
             return null;
         }
-        await usage.RecordAsync(UsageMode.Routing, UsageOperation.Choice, choice.Model, choice.Usage, ct);
+        await usage.RecordAsync(UsageMode.Routing, UsageOperation.Choice, choice.Model, choice.Usage, ct, conversationId);
 
         Eligible? chosen = null;
         if (choice.Choice != NoneKey)

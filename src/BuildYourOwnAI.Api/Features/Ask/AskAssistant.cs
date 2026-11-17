@@ -7,7 +7,7 @@ namespace BuildYourOwnAI.Api.Features.Ask;
 
 public static class AskAssistant
 {
-    public sealed record Request(string? Question);
+    public sealed record Request(string? Question, Guid? ConversationId = null);
 
     public sealed record Response(string Answer, bool Found, IReadOnlyList<AskPipeline.Source> Sources);
 
@@ -37,7 +37,9 @@ public static class AskAssistant
         if (assistant is null)
             return Problems.AssistantNotFound();
 
-        var (answer, failure) = await AskPipeline.AnswerAsync(db, assistant, question, currentUser.Id!, embeddings, chat, usage, UsageMode.Ask, logger, ct);
+        var (answer, failure) = await AskPipeline.AnswerAsync(
+            db, assistant, question, currentUser.Id!, embeddings, chat, usage, UsageMode.Ask, logger, ct,
+            conversationId: request.ConversationId);
         return failure ?? TypedResults.Ok(new Response(answer!.Text, answer.Found, answer.Sources));
     }
 }

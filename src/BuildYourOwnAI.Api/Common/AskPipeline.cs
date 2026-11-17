@@ -48,14 +48,15 @@ public static class AskPipeline
         UsageMode mode,
         ILogger logger,
         CancellationToken ct,
-        string? previousQuestion = null)
+        string? previousQuestion = null,
+        Guid? conversationId = null)
     {
         var searchText = previousQuestion is null ? question : $"{previousQuestion}\n{question}";
         var (generated, embedFailure) = await AiProviderCall.TryAsync(
             () => embeddings.GenerateAsync([searchText], cancellationToken: ct), logger, "embed-question");
         if (embedFailure is not null)
             return (null, embedFailure);
-        await usage.RecordAsync(mode, UsageOperation.Embedding, embeddings.ModelName(), generated!.Usage, ct);
+        await usage.RecordAsync(mode, UsageOperation.Embedding, embeddings.ModelName(), generated!.Usage, ct, conversationId);
         var questionVector = new Vector(generated[0].Vector);
 
         var chunks = await RetrieveAsync(db, assistant.OrganizationId, questionVector, ct);
@@ -65,7 +66,7 @@ public static class AskPipeline
             () => chat.GetResponseAsync(messages, new ChatOptions { ResponseFormat = ChatResponseFormat.Json }, ct), logger, "chat");
         if (chatFailure is not null)
             return (null, chatFailure);
-        await usage.RecordAsync(mode, UsageOperation.Chat, chat.ModelName(), reply!.Usage, ct);
+        await usage.RecordAsync(mode, UsageOperation.Chat, chat.ModelName(), reply!.Usage, ct, conversationId);
 
         var (answer, found) = ParseReply(reply.Text);
         if (!found)

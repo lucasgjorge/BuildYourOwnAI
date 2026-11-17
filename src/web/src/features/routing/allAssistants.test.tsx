@@ -38,7 +38,9 @@ describe('all assistants', () => {
 
     expect(await screen.findByText('Respondido por Professor · ACME')).toBeInTheDocument()
     expect(screen.getByText('Explicação longa.')).toBeInTheDocument()
-    expect(asked).toEqual([{ question: 'O que é fotossíntese?' }])
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatchObject({ question: 'O que é fotossíntese?' })
+    expect((asked[0] as { conversationId: string }).conversationId).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Perguntar a Direto' })).toBeInTheDocument()
   })
 

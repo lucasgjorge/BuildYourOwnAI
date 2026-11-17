@@ -190,6 +190,41 @@ describe('organization base tab', () => {
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/organizations$/))
   })
 
+  it('sidebar offers a confirmed delete button next to every organization', async () => {
+    const deletes: string[] = []
+    let remainingOrganizations = [
+      organizationSummary,
+      { ...organizationSummary, id: 'o2', name: 'Outra organização' },
+    ]
+    server.use(
+      ...organizationPageHandlers(),
+      http.get('*/api/organizations', () => HttpResponse.json(remainingOrganizations)),
+      http.get('*/api/organizations/o2', () => HttpResponse.json({ ...organization, id: 'o2', name: 'Outra organização' })),
+      http.delete('*/api/organizations/:id', ({ params }) => {
+        deletes.push(String(params.id))
+        remainingOrganizations = remainingOrganizations.filter(o => o.id !== params.id)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    window.confirm = confirm
+    const { user } = renderApp(BASE)
+
+    const nav = await screen.findByRole('navigation', { name: 'Principal' })
+    const deleteAcme = await within(nav).findByRole('button', { name: 'Excluir organização ACME' })
+    expect(within(nav).getByRole('button', { name: 'Excluir organização Outra organização' })).toBeInTheDocument()
+
+    await user.click(deleteAcme)
+    expect(deletes).toEqual([])
+    expect(confirm.mock.calls[0][0]).toMatch(/IAs, os documentos e as lacunas/)
+
+    await user.click(deleteAcme)
+    await waitFor(() => expect(deletes).toEqual(['o1']))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/organizations/o2'))
+    await waitFor(() => expect(within(nav).queryByRole('button', { name: 'Excluir organização ACME' })).not.toBeInTheDocument())
+    expect(within(nav).getByRole('button', { name: 'Excluir organização Outra organização' })).toBeInTheDocument()
+  })
+
   // rag-mvp C35 (upload) -> org-chat C25
   it('disables button while processing (upload)', async () => {
     const { gate, release } = deferred()
