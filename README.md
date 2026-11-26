@@ -20,6 +20,7 @@ múltipla escolha dos documentos escolhidos e, quando a resposta está errada, m
 | --- | --- |
 | API | .NET 10, Minimal APIs em Vertical Slice (`src/BuildYourOwnAI.Api`) |
 | Web | React 19 + TypeScript + Vite, TanStack Query, Tailwind (`src/web`) |
+| Mobile | React Native + Expo SDK 58, Expo Router, TanStack Query (`src/mobile`); em construção |
 | Banco | Postgres 17 + pgvector (relacional e vetorial no mesmo banco) |
 | Auth | ASP.NET Core Identity, cookie de sessão HttpOnly na mesma origem |
 | IA | OpenAI (`text-embedding-3-small` + `gpt-4.1-mini`) via `Microsoft.Extensions.AI`; escolha automática da IA = primitiva "choice" da TypeSafe via OpenRouter (modelo `jev-latest`), atrás de `IRoutingChoice` |
@@ -94,6 +95,12 @@ na mesma origem.
 3. Abra a aba **Conversa** e pergunte. Com "Escolha automática", a pergunta vai sozinha para a IA certa; fixe uma IA em "Para" para perguntar direto a ela. Clique num trecho das fontes para ver a prévia à direita.
 4. Perguntas sem resposta aparecem em **Lacunas**. Responda e a resposta vira documento da organização.
 5. Na aba **Estudar**, marque os documentos, escolha 5, 10 ou 20 perguntas e clique em "Começar". Errou? A certa aparece com o trecho de origem à direita.
+
+### App mobile (em construção)
+
+Só a tela de entrada está pronta. Como rodar no telefone com o Expo Go, o que falta e como implementar
+cada tela: [.specs/features/mobile-app/plan.md](.specs/features/mobile-app/plan.md), seção "Execução".
+O código fica em `src/mobile`.
 
 ### Build de produção (um processo só)
 

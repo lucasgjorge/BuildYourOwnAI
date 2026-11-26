@@ -102,6 +102,16 @@ no código que mudou e responder dúvidas de "onde/como coloco isto". Você não
 - Estilo só com Tailwind. Nova biblioteca de componentes/UI ou de estado global exige decisão registrada em `.specs/STATE.md`.
 - Nada de URL absoluta da Api: sempre caminho relativo `/api/...` (mesma origem, AD-001).
 
+### I. Mobile (React Native + Expo, `src/mobile`, AD-016 e AD-017)
+
+- A web é o guardrail: mesmo comportamento, textos e identidade. Valem as regras da seção H, com as diferenças abaixo.
+- `src/mobile/src/app/` só declara rotas; telas, hooks, tipos e testes em `features/<area>/`; `shared/` só para o que 2+ features usam.
+- Toda chamada HTTP passa por `shared/api/client.ts`, com URL de `EXPO_PUBLIC_API_URL` e bearer. Token só no `expo-secure-store`.
+- Cor só em `shared/theme.ts`, igual a `src/web/src/index.css`. Estilo com `StyleSheet`; fontes por `fontFamily`.
+- Nenhum import de `src/web`; tipos copiados com `// Mirrors`. Contrato da Api que muda precisa mudar nos dois.
+- Só bibliotecas que rodam no Expo Go; biblioteca de UI ou estado global exige decisão em `.specs/STATE.md`.
+- Testes com `jest-expo` + Testing Library, montando as rotas reais, com HTTP simulado.
+
 ## Formato da resposta
 
 ```

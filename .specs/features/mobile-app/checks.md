@@ -18,10 +18,10 @@ Nada aqui prova o app rodando num telefone: isso são os "Independent test" do p
 
 ### S1 - Entrar no app com a conta da web
 
-**C1** - `POST /api/auth/login` sem `useCookies`, com credenciais válidas, responde `200` com `tokenType = "Bearer"`, `accessToken` e `refreshToken` não vazios e `expiresIn` > 0, sem `Set-Cookie` (AC 1, door 2)
+**C1** - `POST /api/auth/login` sem `useCookies`, com credenciais válidas, responde `200` com `tokenType = "Bearer"`, `accessToken` e `refreshToken` não vazios e `expiresIn` > 0, sem `Set-Cookie` (AC 1, door 2) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~MobileAuthTests.Login_without_cookies_returns_tokens"`
 
-**C48** - O mesmo login com senha errada e com e-mail desconhecido responde `401`, sem token no corpo (Surface)
+**C48** - O mesmo login com senha errada e com e-mail desconhecido responde `401`, sem token no corpo (Surface) ✓
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~MobileAuthTests.Token_login_with_wrong_credentials_returns_401"`
 
 **C49** - `POST /api/auth/refresh` com um `refreshToken` válido responde `200` com um par novo, e o `accessToken` novo abre `GET /api/auth/me` (Surface, AC 11)
@@ -42,14 +42,14 @@ Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~
 **C63** - Com bearer, o limite de perguntas continua por usuário: a 21ª pergunta de A no minuto responde `429` e a primeira de B responde `200`; o bearer sem papel Admin recebe `403` em `GET /api/admin/usage` (Impact: auth)
 Proof: `dotnet test tests/BuildYourOwnAI.Api.Tests --filter "FullyQualifiedName~MobileAuthTests.Bearer_keeps_rate_limit_per_user_and_roles"`
 
-**C5** - Entrar com credenciais válidas grava `accessToken` e `refreshToken` no `expo-secure-store`, mostra Organizações e a chamada seguinte leva `Authorization: Bearer <accessToken>` (AC 5, door 2)
+**C5** - Entrar com credenciais válidas grava `accessToken` e `refreshToken` no `expo-secure-store`, mostra Organizações e a chamada seguinte leva `Authorization: Bearer <accessToken>` (AC 5, door 2) ✓
 Proof: `npm --prefix src/mobile test -- -t "login stores tokens and opens organizations"`
 
-**C6** - Em login, refresh e erro, nenhuma chamada a `console.*` contém token ou senha; e `src/mobile/src` não importa `async-storage` nem `expo-file-system` (AC 6)
+**C6** - Em login, refresh e erro, nenhuma chamada a `console.*` contém token ou senha; e `src/mobile/src` não importa `async-storage` nem `expo-file-system` (AC 6) (parcial: falta o caminho de refresh)
 Proof: `npm --prefix src/mobile test -- -t "tokens and password are never logged"`
 Proof: `npm --prefix src/mobile test -- -t "only secure store persists data"`
 
-**C7** - Um `401` no login mostra "E-mail ou senha inválidos." e não dispara `POST /api/auth/refresh` (AC 7)
+**C7** - Um `401` no login mostra "E-mail ou senha inválidos." e não dispara `POST /api/auth/refresh` (AC 7) ✓
 Proof: `npm --prefix src/mobile test -- -t "login failure shows invalid credentials"`
 
 **C8** - Criar conta envia `fullName`, `email`, `password` a `POST /api/auth/register`, faz o login e mostra Organizações (AC 8)
@@ -58,10 +58,10 @@ Proof: `npm --prefix src/mobile test -- -t "register creates account and signs i
 **C9** - Um `400` no cadastro mostra o `title` e as mensagens de `errors`, e os três campos mantêm o que foi digitado (AC 9)
 Proof: `npm --prefix src/mobile test -- -t "register errors keep the typed values"`
 
-**C62** - Enquanto login ou cadastro não respondem, o botão mostra "Processando..." e fica desabilitado (Observable)
+**C62** - Enquanto login ou cadastro não respondem, o botão mostra "Processando..." e fica desabilitado (Observable) (parcial: falta o formulário de cadastro)
 Proof: `npm --prefix src/mobile test -- -t "auth forms show processing state"`
 
-**C10** - Abrir o app com tokens guardados mostra Organizações sem a tela Entrar; sem tokens, mostra Entrar (AC 10)
+**C10** - Abrir o app com tokens guardados mostra Organizações sem a tela Entrar; sem tokens, mostra Entrar (AC 10) ✓
 Proof: `npm --prefix src/mobile test -- -t "app start follows the stored session"`
 
 **C11** - Com 3 chamadas em paralelo respondendo `401`, há exatamente um `POST /api/auth/refresh`, o par novo é gravado e cada chamada é repetida uma vez com o token novo (AC 11)
@@ -79,22 +79,22 @@ Proof: `npm --prefix src/mobile test -- -t "expired refresh returns to login"`
 **C13** - Um refresh que falha por rede ou com `500` mantém os tokens gravados, mostra o erro e "Tentar de novo", que refaz a chamada (AC 13)
 Proof: `npm --prefix src/mobile test -- -t "refresh outage keeps the session"`
 
-**C14** - "Sair" apaga os dois tokens, esvazia o cache do TanStack Query e mostra Entrar (AC 14)
+**C14** - "Sair" apaga os dois tokens, esvazia o cache do TanStack Query e mostra Entrar (AC 14) ✓
 Proof: `npm --prefix src/mobile test -- -t "logout clears tokens and cache"`
 
-**C15** - Uma falha de rede mostra "Não foi possível falar com o servidor." (AC 15)
+**C15** - Uma falha de rede mostra "Não foi possível falar com o servidor." (AC 15) ✓
 Proof: `npm --prefix src/mobile test -- -t "network failure shows server unreachable"`
 
-**C16** - Sem `EXPO_PUBLIC_API_URL`, o app mostra a tela que manda defini-la em `src/mobile/.env`, sem chamar `fetch` (AC 16)
+**C16** - Sem `EXPO_PUBLIC_API_URL`, o app mostra a tela que manda defini-la em `src/mobile/.env`, sem chamar `fetch` (AC 16) ✓
 Proof: `npm --prefix src/mobile test -- -t "missing api url shows setup screen"`
 
-**C51** - O bundle do app é gerado para Android e iOS sem erro (door 1)
+**C51** - O bundle do app é gerado para Android e iOS sem erro (door 1) ✓
 Proof: `npm --prefix src/mobile run bundle`
 
-**C52** - `src/mobile/package.json` fixa `expo` na faixa 58 e usa `expo-router` como entrada (door 1; se o Expo Go do usuário for 57, o plano manda começar no 57 e este check volta para aprovação)
+**C52** - `src/mobile/package.json` fixa `expo` na faixa 58 e usa `expo-router` como entrada (door 1; se o Expo Go do usuário for 57, o plano manda começar no 57 e este check volta para aprovação) ✓
 Proof: `npm --prefix src/mobile test -- -t "app config pins expo sdk 58"`
 
-**C53** - Nenhum arquivo de `src/mobile` importa de `src/web`, e cada `types.ts` espelhado traz o comentário `// Mirrors` (door 3)
+**C53** - Nenhum arquivo de `src/mobile` importa de `src/web`, e cada `types.ts` espelhado traz o comentário `// Mirrors` (door 3) ✓
 Proof: `npm --prefix src/mobile test -- -t "mobile mirrors types without importing web"`
 
 ### S2 - Conversar com as IAs
@@ -195,33 +195,33 @@ Proof: `npm --prefix src/mobile test -- -t "gap errors keep the typed answer"`
 
 ### S5 - Seguir o desenho da web
 
-**C43** - As 17 cores de `theme.ts` são iguais às de `src/web/src/index.css`; o teste lê o CSS do disco e falha em divergência ou nome ausente (AC 43)
+**C43** - As 17 cores de `theme.ts` são iguais às de `src/web/src/index.css`; o teste lê o CSS do disco e falha em divergência ou nome ausente (AC 43) ✓
 Proof: `npm --prefix src/mobile test -- -t "theme colors match the web"`
 
-**C44** - Nenhum arquivo de `src/mobile/src` além de `theme.ts` contém cor em hexadecimal, `rgb(`, `hsl(` ou nome de cor em propriedade de cor (`transparent` é aceito) (AC 44)
+**C44** - Nenhum arquivo de `src/mobile/src` além de `theme.ts` contém cor em hexadecimal, `rgb(`, `hsl(` ou nome de cor em propriedade de cor (`transparent` é aceito) (AC 44) ✓
 Proof: `npm --prefix src/mobile test -- -t "no literal colors outside theme"`
 
-**C45** - O layout raiz carrega as três famílias; um título usa Bricolage Grotesque, um parágrafo Instrument Sans e um rótulo técnico ("trecho N") JetBrains Mono (AC 45)
+**C45** - O layout raiz carrega as três famílias; um título usa Bricolage Grotesque, um parágrafo Instrument Sans e um rótulo técnico ("trecho N") JetBrains Mono (AC 45) (parcial: falta o rótulo técnico "trecho N")
 Proof: `npm --prefix src/mobile test -- -t "screens use the web fonts"`
 
-**C46** - `fetch(` aparece em `src/mobile/src` somente em `shared/api/client.ts` (AC 46)
+**C46** - `fetch(` aparece em `src/mobile/src` somente em `shared/api/client.ts` (AC 46) ✓
 Proof: `npm --prefix src/mobile test -- -t "only the api client calls fetch"`
 
 **C47** - A IA na posição i (0..6) da organização recebe a cor `lane-(i mod 6 + 1)` na lista, no "Para" e na resposta (AC 47)
 Proof: `npm --prefix src/mobile test -- -t "assistant lane color follows its position"`
 
-**C54** - O TypeScript do app compila em `strict`, e nenhum arquivo de `src/mobile/src` usa `any` explícito (door 5)
+**C54** - O TypeScript do app compila em `strict`, e nenhum arquivo de `src/mobile/src` usa `any` explícito (door 5) ✓
 Proof: `npm --prefix src/mobile run typecheck`
 Proof: `npm --prefix src/mobile test -- -t "no explicit any"`
 
-**C55** - Cada arquivo de `src/mobile/src/app` só declara rota ou layout (sem `useQuery`, `useMutation` nem `fetch`), e as telas ficam em `src/mobile/src/features/<area>/` (door 5)
+**C55** - Cada arquivo de `src/mobile/src/app` só declara rota ou layout (sem `useQuery`, `useMutation` nem `fetch`), e as telas ficam em `src/mobile/src/features/<area>/` (door 5) ✓
 Proof: `npm --prefix src/mobile test -- -t "routes only declare routes"`
 
-**C64** - O `architecture-guardian` tem uma seção "Mobile", e `AGENTS.md`, `README.md` e `docs/PRD.md` citam `src/mobile` (Impact: repositório)
+**C64** - O `architecture-guardian` tem uma seção "Mobile", e `AGENTS.md`, `README.md` e `docs/PRD.md` citam `src/mobile` (Impact: repositório) ✓
 Proof: `grep -q "Mobile" .claude/agents/architecture-guardian.md && grep -q "src/mobile" AGENTS.md && grep -q "src/mobile" README.md && grep -q "src/mobile" docs/PRD.md`
 
-**C65** - A web continua compilando e com os testes verdes, sem arquivo alterado em `src/web` nem em `src/BuildYourOwnAI.Api` (Impact: build; door 3)
-Proof: `npm --prefix src/web run build && npm --prefix src/web test && git diff --quiet f560d24 -- src/web src/BuildYourOwnAI.Api`
+**C65** - A web continua compilando e com os testes verdes, sem arquivo alterado em `src/web` nem em `src/BuildYourOwnAI.Api` (Impact: build; door 3) ✓
+Proof: `npm --prefix src/web run build && npm --prefix src/web test && git diff --quiet 252f016 -- src/web src/BuildYourOwnAI.Api`
 
 ## Coverage
 
@@ -291,3 +291,6 @@ Evidence:
 - Folga para ajustar `jest-expo` e Expo SDK 58, que não existem no repo ≈ 15k (estimativa sem base medida)
 - Total ≈ 74k, abaixo do budget de 150k - um builder
 - Mechanism: one builder (dentro do budget, sem pergunta)
+- **Boundary:** o usuário reduziu a primeira entrega à tela Entrar e sua base; feitos os checks marcados `✓`, o resto está em plan.md `## Execução`. Verifier não rodado: a feature não está completa
+- **Settled mid-build:** implementar só uma tela e deixar instruções para outro dev; branch a partir da `main` atual (`origin/main`, `252f016`); C65 passou a comparar com `252f016`
+- **Abandoned:** nada

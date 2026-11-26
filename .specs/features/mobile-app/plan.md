@@ -212,6 +212,102 @@ Quem conhece a web reconhece o app e acha o código no mesmo lugar. Vale para S1
 | API `login` e `refresh` | formato de erro e códigos | existing - respostas do Identity (`401`); AC 7, AC 12 |
 | API `login` e `refresh` | quem chama, versionamento, rate limit | n/a - rotas públicas do Identity que já existem, sem mudança no servidor |
 
+## Execução
+
+**Estado em 2026-11-26:** só a tela **Entrar** está pronta, com a base que ela exige (pedido do
+usuário: implementar uma tela e deixar o resto para outro dev). Branch `mobile-app`, a partir de
+`origin/main` (`252f016`).
+
+| # | Entrega | Estado | Checks |
+| --- | --- | --- | --- |
+| 0 | Projeto Expo, tema, componentes, cliente HTTP, sessão, guardrails, docs | **feito** | C43, C44, C46, C51-C55, C64, C65 |
+| 1 | Tela Entrar (e "Sair") | **feito** | C1, C48, C5, C7, C10, C14, C15, C16 |
+| 2 | Renovação do token e contrato bearer na Api | pendente | C2-C4, C11-C13, C49, C50, C56, C57, C63; fecha C6 |
+| 3 | Tela Criar conta | pendente | C8, C9; fecha C62 |
+| 4 | Tela Organizações (hoje é um aviso "em construção") | pendente | C17, C18, C59 |
+| 5 | Tela Conversa | pendente | C19-C31, C47, C58 |
+| 6 | Tela Prévia do trecho | pendente | C32-C35, C60; fecha C45 |
+| 7 | Tela Lacunas e barra de abas | pendente | C36-C42, C61 |
+| 8 | Verificação independente e revisão de arquitetura | pendente | todos |
+
+C6, C45 e C62 estão **parciais**: o teste existe e passa para o que há hoje, e falta o caso indicado.
+O passo 3 do `Flow` (renovar em `401`) descreve o destino: ainda não está no código.
+
+### Como rodar
+
+```bash
+docker compose up -d
+dotnet run --project src/BuildYourOwnAI.Api --urls http://0.0.0.0:5295   # a Api precisa escutar na rede
+cd src/mobile
+npm install
+cp .env.example .env        # troque pelo IP do PC (ipconfig)
+npm start                   # leia o QR code com o Expo Go (telefone na mesma rede)
+npm test
+npm run typecheck
+npm run bundle
+```
+
+Ninguém ainda abriu o app num telefone: faça isso antes da próxima entrega. Se o Expo Go recusar o
+SDK 58, volte a decisão ao usuário (C52). No Windows, libere a porta 5295 no firewall se o telefone
+não alcançar a Api.
+
+### Regras para qualquer tela
+
+1. Leia o check em `checks.md` antes do código; o teste leva **o nome escrito na `Proof`** e afirma o que o check diz.
+2. Abra o arquivo da web indicado abaixo e copie comportamento e textos. Onde o plano não disser o contrário, a web decide.
+3. Rota nova é um arquivo de uma linha em `src/mobile/src/app/` (autenticada: dentro de `(app)/`); a tela fica em `src/mobile/src/features/<area>/`, com `api.ts`, `types.ts` (com `// Mirrors ...`) e o teste.
+4. Dados só por TanStack Query sobre `shared/api/client.ts`. Cor só de `shared/theme.ts`; fonte por `fontFamily`, sem `fontWeight`.
+5. Reaproveite `shared/ui.tsx` (`Button`, `Alert`, `TextField`). Nada de biblioteca de UI ou estado global sem decisão em `STATE.md`.
+6. Dependência nova entra com `npx expo install <pacote>` e precisa rodar no Expo Go.
+7. Ao fechar um check, marque `✓` em `checks.md` no mesmo commit (Conventional Commits).
+
+### Como escrever os testes
+
+- Tela: `renderRouter('./src/app')` de `expo-router/testing-library`, com `fakeApi({...})` de `src/test/api.ts`. Modelo: `src/features/auth/login.test.tsx`.
+- A Testing Library desta versão é **assíncrona**: `await fireEvent.press(...)`, `await fireEvent.changeText(...)`, `await first.unmount()`.
+- Sessão iniciada: `await saveTokens(tokens)` antes de abrir o app.
+- `npm test -- -t "nome"` sai com sucesso mesmo sem teste com esse nome: confira que ele rodou.
+
+### Instruções por entrega
+
+**2. Renovação do token** (faça primeiro: as telas seguintes dependem dela)
+- Código: `src/shared/api/client.ts`, no ponto marcado `PENDING`; falta ler o `refreshToken` em `src/shared/session.ts`.
+- Em `401` de chamada autenticada: um único `POST /api/auth/refresh {refreshToken}` compartilhado entre chamadas paralelas (guarde a promessa em andamento), grave o par e repita a chamada uma vez. O `401` do login não renova nada.
+- Refresh `401`: apague os tokens, volte para Entrar com "Sua sessão expirou. Entre novamente.". Rede ou `5xx`: mantenha os tokens e ofereça "Tentar de novo".
+- Api: complete `tests/BuildYourOwnAI.Api.Tests/Features/MobileAuthTests.cs` (C2-C4, C49, C50, C63). Para token expirado, `WithWebHostBuilder` com `BearerTokenOptions.BearerTokenExpiration` negativo. Nenhum código de produção da Api muda.
+
+**3. Criar conta**
+- Web: `features/auth/{RegisterPage,AuthForm}.tsx` e `useRegister` em `features/auth/api.ts` (registra e entra).
+- Mobile: `features/auth/RegisterScreen.tsx`, rota `src/app/register.tsx`, `useRegister` em `features/auth/api.ts`; troque o texto do rodapé de `LoginScreen` por um link (ajuste o teste de fontes, que usa esse texto).
+
+**4. Organizações**
+- Web: `features/organizations/{api.ts,types.ts,OrganizationsPage.tsx}`. Api: `GET /api/organizations`.
+- Substitua o conteúdo de `features/organizations/OrganizationsScreen.tsx`. Mantenha "Sair". O teste de login usa o título "Organizações".
+
+**5. Conversa**
+- Web: `features/chat/{ChatPage,Thread}.tsx`, `features/routing/{api,types}.ts`, `useAsk` em `features/assistants/api.ts`, `shared/lanes.ts`, `shared/api/types.ts`.
+- Api: `GET /api/organizations/{id}`, `POST /api/organizations/{id}/route/ask`, `POST /api/assistants/{id}/ask`.
+- Rota `src/app/(app)/organizations/[id].tsx` (mova a lista para `organizations/index.tsx`). Crie `shared/lanes.ts` com a mesma regra da web (posição na organização, 6 cores). A conversa vive só no estado da tela.
+
+**6. Prévia do trecho**
+- Web: `features/chat/SourcePreview.tsx`, `useDocumentChunk` em `features/organizations/api.ts`.
+- Api: `GET /api/organizations/{id}/documents/{documentId}/chunks/{index}?around=1`.
+- Apresente como modal do Expo Router. Abre só no toque (a web abre sozinha; ver Assumptions). O rótulo "trecho N" usa `fonts.mono`: complete o teste de fontes.
+
+**7. Lacunas**
+- Web: `features/gaps/{GapsPage.tsx,api.ts,types.ts}`. Api: `GET /api/gaps`, `POST /api/gaps/{id}/answer`, `POST /api/gaps/{id}/dismiss`.
+- Abas "Organizações" e "Lacunas" com o `Tabs` do Expo Router em `(app)/`; contagem no selo da aba. Confirmação com `Alert.alert` (o nome colide com o `Alert` de `shared/ui`: importe um deles com outro nome). Lacuna sem organização: escolha por botões feitos com os componentes próprios.
+
+**8. Fechamento**
+- Rode todas as provas de `checks.md`, o verificador independente do `tlc-spec-lean` sobre `252f016..HEAD` e o agente `architecture-guardian`.
+- Os dois não foram rodados nesta primeira entrega, porque a feature não está completa.
+
+### Decisão em aberto
+
+A `main` atual ganhou "Uso de tokens" no chat da web (`features/chat/api.ts`, `conversationId` nas
+perguntas, `GET /api/usage/conversations/{conversationId}`), depois que este plano foi escrito. Ele
+**não** está nos critérios do app. Pergunte ao usuário antes da entrega 5 se o app deve ter o mesmo.
+
 ## Sources
 
 - Pedido do usuário em 2026-11-26 - React Native com Expo, pasta nova no repo; v1 = login, organizações, chat com fontes e Lacunas
