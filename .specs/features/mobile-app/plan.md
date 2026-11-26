@@ -214,9 +214,9 @@ Quem conhece a web reconhece o app e acha o código no mesmo lugar. Vale para S1
 
 ## Execução
 
-**Estado em 2026-11-26:** só a tela **Entrar** está pronta, com a base que ela exige (pedido do
-usuário: implementar uma tela e deixar o resto para outro dev). Branch `mobile-app`, a partir de
-`origin/main` (`252f016`).
+**Estado em 2026-11-26:** prontas as telas **Entrar**, **Organizações** e **Conversa** (pedidos do
+usuário: primeiro só uma tela, depois o chat para ter o que testar). O login foi confirmado no
+telefone pelo usuário; o chat ainda não. Branch `mobile-app`, a partir de `origin/main` (`252f016`).
 
 | # | Entrega | Estado | Checks |
 | --- | --- | --- | --- |
@@ -224,14 +224,15 @@ usuário: implementar uma tela e deixar o resto para outro dev). Branch `mobile-
 | 1 | Tela Entrar (e "Sair") | **feito** | C1, C48, C5, C7, C10, C14, C15, C16 |
 | 2 | Renovação do token e contrato bearer na Api | pendente | C2-C4, C11-C13, C49, C50, C56, C57, C63; fecha C6 |
 | 3 | Tela Criar conta | pendente | C8, C9; fecha C62 |
-| 4 | Tela Organizações (hoje é um aviso "em construção") | pendente | C17, C18, C59 |
-| 5 | Tela Conversa | pendente | C19-C31, C47, C58 |
-| 6 | Tela Prévia do trecho | pendente | C32-C35, C60; fecha C45 |
-| 7 | Tela Lacunas e barra de abas | pendente | C36-C42, C61 |
+| 4 | Tela Organizações | **feito** | C17, C18, C59 |
+| 5 | Tela Conversa | **feito** | C19-C25, C27-C31, C45, C47, C58 |
+| 6 | Tela Prévia do trecho | pendente | C33-C35, C60; fecha C32 |
+| 7 | Tela Lacunas e barra de abas | pendente | C36-C42, C61; fecha C26 |
 | 8 | Verificação independente e revisão de arquitetura | pendente | todos |
 
-C6, C45 e C62 estão **parciais**: o teste existe e passa para o que há hoje, e falta o caso indicado.
-O passo 3 do `Flow` (renovar em `401`) descreve o destino: ainda não está no código.
+C6, C26, C32 e C62 estão **parciais**: o teste existe e passa para o que há hoje, e falta o caso indicado.
+O passo 3 do `Flow` (renovar em `401`) descreve o destino: ainda não está no código. Até lá, depois
+de uma hora o token vence e as telas mostram o erro da Api: toque em "Voltar", "Sair" e entre de novo.
 
 ### Como rodar
 
@@ -281,23 +282,16 @@ comuns estão no [README](../../../README.md), passo 5.
 - Web: `features/auth/{RegisterPage,AuthForm}.tsx` e `useRegister` em `features/auth/api.ts` (registra e entra).
 - Mobile: `features/auth/RegisterScreen.tsx`, rota `src/app/register.tsx`, `useRegister` em `features/auth/api.ts`; troque o texto do rodapé de `LoginScreen` por um link (ajuste o teste de fontes, que usa esse texto).
 
-**4. Organizações**
-- Web: `features/organizations/{api.ts,types.ts,OrganizationsPage.tsx}`. Api: `GET /api/organizations`.
-- Substitua o conteúdo de `features/organizations/OrganizationsScreen.tsx`. Mantenha "Sair". O teste de login usa o título "Organizações".
-
-**5. Conversa**
-- Web: `features/chat/{ChatPage,Thread}.tsx`, `features/routing/{api,types}.ts`, `useAsk` em `features/assistants/api.ts`, `shared/lanes.ts`, `shared/api/types.ts`.
-- Api: `GET /api/organizations/{id}`, `POST /api/organizations/{id}/route/ask`, `POST /api/assistants/{id}/ask`.
-- Rota `src/app/(app)/organizations/[id].tsx` (mova a lista para `organizations/index.tsx`). Crie `shared/lanes.ts` com a mesma regra da web (posição na organização, 6 cores). A conversa vive só no estado da tela.
-
 **6. Prévia do trecho**
 - Web: `features/chat/SourcePreview.tsx`, `useDocumentChunk` em `features/organizations/api.ts`.
 - Api: `GET /api/organizations/{id}/documents/{documentId}/chunks/{index}?around=1`.
-- Apresente como modal do Expo Router. Abre só no toque (a web abre sozinha; ver Assumptions). O rótulo "trecho N" usa `fonts.mono`: complete o teste de fontes.
+- Apresente como modal do Expo Router. Abre só no toque (a web abre sozinha; ver Assumptions). Em `features/chat/Thread.tsx`, os textos "trecho N" marcados `PENDING` viram botões; complete o teste `sources are grouped by document`.
 
 **7. Lacunas**
 - Web: `features/gaps/{GapsPage.tsx,api.ts,types.ts}`. Api: `GET /api/gaps`, `POST /api/gaps/{id}/answer`, `POST /api/gaps/{id}/dismiss`.
 - Abas "Organizações" e "Lacunas" com o `Tabs` do Expo Router em `(app)/`; contagem no selo da aba. Confirmação com `Alert.alert` (o nome colide com o `Alert` de `shared/ui`: importe um deles com outro nome). Lacuna sem organização: escolha por botões feitos com os componentes próprios.
+
+- No chat: acrescente o atalho para Lacunas no aviso de `noMatch` (C26) e invalide a consulta de lacunas depois de cada pergunta (`features/routing/api.ts`, `features/assistants/api.ts`).
 
 **8. Fechamento**
 - Rode todas as provas de `checks.md`, o verificador independente do `tlc-spec-lean` sobre `252f016..HEAD` e o agente `architecture-guardian`.
@@ -307,7 +301,8 @@ comuns estão no [README](../../../README.md), passo 5.
 
 A `main` atual ganhou "Uso de tokens" no chat da web (`features/chat/api.ts`, `conversationId` nas
 perguntas, `GET /api/usage/conversations/{conversationId}`), depois que este plano foi escrito. Ele
-**não** está nos critérios do app. Pergunte ao usuário antes da entrega 5 se o app deve ter o mesmo.
+**não** está nos critérios do app, e a tela Conversa foi feita sem ele. Falta o usuário decidir se o
+app deve ter o mesmo.
 
 ## Sources
 

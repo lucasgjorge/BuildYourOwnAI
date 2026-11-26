@@ -99,60 +99,60 @@ Proof: `npm --prefix src/mobile test -- -t "mobile mirrors types without importi
 
 ### S2 - Conversar com as IAs
 
-**C17** - Organizações lista cada organização com nome, número de IAs e número de documentos, na ordem da Api (AC 17)
+**C17** - Organizações lista cada organização com nome, número de IAs e número de documentos, na ordem da Api (AC 17) ✓
 Proof: `npm --prefix src/mobile test -- -t "organizations list shows counts"`
 
-**C18** - Sem organizações, mostra "Você ainda não tem organizações. Crie a primeira na versão web." (AC 18)
+**C18** - Sem organizações, mostra "Você ainda não tem organizações. Crie a primeira na versão web." (AC 18) ✓
 Proof: `npm --prefix src/mobile test -- -t "empty organizations points to web"`
 
-**C59** - Organizações mostra "Carregando..." enquanto espera e o `title` do problem details quando falha (Observable)
+**C59** - Organizações mostra "Carregando..." enquanto espera e o `title` do problem details quando falha (Observable) ✓
 Proof: `npm --prefix src/mobile test -- -t "organizations loading and error"`
 
-**C19** - Organização sem IAs mostra "Esta organização ainda não tem IAs" e manda criá-las na versão web, sem campo de pergunta (AC 19)
+**C19** - Organização sem IAs mostra "Esta organização ainda não tem IAs" e manda criá-las na versão web, sem campo de pergunta (AC 19) ✓
 Proof: `npm --prefix src/mobile test -- -t "organization without assistants points to web"`
 
-**C58** - Abrir uma organização que responde `404` mostra o `title` da Api (Observable)
+**C58** - Abrir uma organização que responde `404` mostra o `title` da Api (Observable) ✓
 Proof: `npm --prefix src/mobile test -- -t "missing organization shows api title"`
 
-**C20** - Conversa vazia lista cada IA com o "Quando usar"; a sem "Quando usar" mostra o mesmo texto da web (AC 20)
+**C20** - Conversa vazia lista cada IA com o "Quando usar"; a sem "Quando usar" mostra o mesmo texto da web (AC 20) ✓
 Proof: `npm --prefix src/mobile test -- -t "empty conversation lists the assistants"`
 
-**C21** - A primeira pergunta com "Escolha automática" envia só `question` a `POST /api/organizations/{id}/route/ask`; a seguinte envia também `previous { question, assistantId }` da última resposta (AC 21)
+**C21** - A primeira pergunta com "Escolha automática" envia só `question` a `POST /api/organizations/{id}/route/ask`; a seguinte envia também `previous { question, assistantId }` da última resposta (AC 21) ✓
 Proof: `npm --prefix src/mobile test -- -t "automatic choice sends the previous turn"`
 
-**C22** - Com uma IA selecionada em "Para", a pergunta vai para `POST /api/assistants/{id}/ask` (AC 22)
+**C22** - Com uma IA selecionada em "Para", a pergunta vai para `POST /api/assistants/{id}/ask` (AC 22) ✓
 Proof: `npm --prefix src/mobile test -- -t "pinned assistant is asked directly"`
 
-**C23** - `answered` mostra "Respondido por <IA>" e "escolha automática"; "Perguntar a <alternativa>" chama o ask daquela IA com a mesma pergunta (AC 23)
+**C23** - `answered` mostra "Respondido por <IA>" e "escolha automática"; "Perguntar a <alternativa>" chama o ask daquela IA com a mesma pergunta (AC 23) ✓
 Proof: `npm --prefix src/mobile test -- -t "answer offers the alternatives"`
 
-**C24** - `found: false` mostra "Não encontrado nos documentos - registrado em Lacunas" e nenhum botão "trecho N" (AC 24)
+**C24** - `found: false` mostra "Não encontrado nos documentos - registrado em Lacunas" e nenhum botão "trecho N" (AC 24) ✓
 Proof: `npm --prefix src/mobile test -- -t "not found answer cites nothing"`
 
-**C25** - `clarify` mostra "Qual destas IAs deve responder?" com um botão por candidata; tocar chama o ask e a resposta toma o lugar do aviso (AC 25)
+**C25** - `clarify` mostra "Qual destas IAs deve responder?" com um botão por candidata; tocar chama o ask e a resposta toma o lugar do aviso (AC 25) ✓
 Proof: `npm --prefix src/mobile test -- -t "clarify is replaced by the chosen answer"`
 
-**C26** - `noMatch` mostra "Nenhuma IA desta organização sabe responder isso ainda. A pergunta foi para Lacunas." e o atalho abre a aba Lacunas (AC 26)
+**C26** - `noMatch` mostra "Nenhuma IA desta organização sabe responder isso ainda. A pergunta foi para Lacunas." e o atalho abre a aba Lacunas (AC 26) (parcial: falta o atalho para a aba Lacunas)
 Proof: `npm --prefix src/mobile test -- -t "no match links to gaps"`
 
-**C27** - Um `422` da escolha automática mostra "Nenhuma IA desta organização tem 'Quando usar' preenchido." e o campo volta com o texto (AC 27)
+**C27** - Um `422` da escolha automática mostra "Nenhuma IA desta organização tem 'Quando usar' preenchido." e o campo volta com o texto (AC 27) ✓
 Proof: `npm --prefix src/mobile test -- -t "no eligible assistant restores the text"`
 
-**C28** - Para `404`, `429`, `502` e falha de rede, a conversa mostra o título do erro e o campo volta com o texto (AC 28, AC 15)
+**C28** - Para `404`, `429`, `502` e falha de rede, a conversa mostra o título do erro e o campo volta com o texto (AC 28, AC 15) ✓
 Proof: `npm --prefix src/mobile test -- -t "ask errors show title and restore text"`
 
-**C29** - Enquanto a pergunta não responde, "Enviar" e os botões de IA ficam desabilitados, e um segundo toque não faz outra chamada (AC 29)
+**C29** - Enquanto a pergunta não responde, "Enviar" e os botões de IA ficam desabilitados, e um segundo toque não faz outra chamada (AC 29) ✓
 Proof: `npm --prefix src/mobile test -- -t "pending question disables sending"`
 
-**C30** - Texto vazio e texto só com espaços não geram chamada (AC 30)
+**C30** - Texto vazio e texto só com espaços não geram chamada (AC 30) ✓
 Proof: `npm --prefix src/mobile test -- -t "blank question is not sent"`
 
-**C31** - Voltar para Organizações e abrir a mesma de novo mostra a conversa vazia (AC 31)
+**C31** - Voltar para Organizações e abrir a mesma de novo mostra a conversa vazia (AC 31) ✓
 Proof: `npm --prefix src/mobile test -- -t "reopening organization starts empty"`
 
 ### S3 - Ver o trecho
 
-**C32** - `found: true` com 3 fontes de 2 documentos mostra 2 grupos, na ordem de citação, com um botão "trecho N" (índice + 1) por trecho; nada abre sozinho (AC 32, Assumptions)
+**C32** - `found: true` com 3 fontes de 2 documentos mostra 2 grupos, na ordem de citação, com um botão "trecho N" (índice + 1) por trecho; nada abre sozinho (AC 32, Assumptions) (parcial: faltam os botões que abrem o trecho)
 Proof: `npm --prefix src/mobile test -- -t "sources are grouped by document"`
 
 **C33** - Tocar em "trecho N" lê `GET /api/organizations/{id}/documents/{documentId}/chunks/{index}?around=1` e mostra o arquivo, "Trecho N de M" e o trecho citado marcado como selecionado entre os vizinhos (AC 33)
@@ -201,13 +201,14 @@ Proof: `npm --prefix src/mobile test -- -t "theme colors match the web"`
 **C44** - Nenhum arquivo de `src/mobile/src` além de `theme.ts` contém cor em hexadecimal, `rgb(`, `hsl(` ou nome de cor em propriedade de cor (`transparent` é aceito) (AC 44) ✓
 Proof: `npm --prefix src/mobile test -- -t "no literal colors outside theme"`
 
-**C45** - O layout raiz carrega as três famílias; um título usa Bricolage Grotesque, um parágrafo Instrument Sans e um rótulo técnico ("trecho N") JetBrains Mono (AC 45) (parcial: falta o rótulo técnico "trecho N")
+**C45** - O layout raiz carrega as três famílias; um título usa Bricolage Grotesque, um parágrafo Instrument Sans e um rótulo técnico ("trecho N") JetBrains Mono (AC 45) ✓
 Proof: `npm --prefix src/mobile test -- -t "screens use the web fonts"`
+Proof: `npm --prefix src/mobile test -- -t "sources are grouped by document"`
 
 **C46** - `fetch(` aparece em `src/mobile/src` somente em `shared/api/client.ts` (AC 46) ✓
 Proof: `npm --prefix src/mobile test -- -t "only the api client calls fetch"`
 
-**C47** - A IA na posição i (0..6) da organização recebe a cor `lane-(i mod 6 + 1)` na lista, no "Para" e na resposta (AC 47)
+**C47** - A IA na posição i (0..6) da organização recebe a cor `lane-(i mod 6 + 1)` na lista, no "Para" e na resposta (AC 47) ✓
 Proof: `npm --prefix src/mobile test -- -t "assistant lane color follows its position"`
 
 **C54** - O TypeScript do app compila em `strict`, e nenhum arquivo de `src/mobile/src` usa `any` explícito (door 5) ✓
@@ -294,3 +295,4 @@ Evidence:
 - **Boundary:** o usuário reduziu a primeira entrega à tela Entrar e sua base; feitos os checks marcados `✓`, o resto está em plan.md `## Execução`. Verifier não rodado: a feature não está completa
 - **Settled mid-build:** implementar só uma tela e deixar instruções para outro dev; branch a partir da `main` atual (`origin/main`, `252f016`); C65 passou a comparar com `252f016`
 - **Abandoned:** nada
+- **Boundary:** segundo pedido do usuário: tela Conversa, com a lista de organizações que leva a ela; checks marcados `✓`. Verifier ainda não rodado

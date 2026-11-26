@@ -98,7 +98,7 @@ na mesma origem.
 
 ### 5. App mobile (React Native + Expo, em construção)
 
-Só a tela de entrada (com "Sair") está pronta. O que falta e como implementar cada tela:
+Estão prontas as telas de entrada, organizações e conversa (sem abrir o trecho citado e sem Lacunas). O que falta e como implementar cada tela:
 [.specs/features/mobile-app/plan.md](.specs/features/mobile-app/plan.md), seção "Execução".
 
 **Você precisa de**
@@ -143,7 +143,7 @@ cd src/mobile; npx expo login
 npm start
 ```
 
-**d. Abrir no telefone.** Leia o QR code do terminal com a câmera (iPhone) ou pelo Expo Go (Android), e entre com a conta de desenvolvimento do passo 3. Mudanças no código recarregam sozinhas; mudança no `.env` exige reiniciar o Expo.
+**d. Abrir no telefone.** Leia o QR code do terminal com a câmera (iPhone) ou pelo Expo Go (Android), e entre com a sua conta da web (a de desenvolvimento do passo 3 não tem organizações). O token vale uma hora e ainda não é renovado: se as telas começarem a dar erro, toque em "Sair" e entre de novo. Mudanças no código recarregam sozinhas; mudança no `.env` exige reiniciar o Expo.
 
 ### Build de produção (um processo só)
 
