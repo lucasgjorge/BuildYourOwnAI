@@ -252,3 +252,4 @@ As três rotas de pergunta e a criação de sessão de estudo somam no mesmo lim
 | O Expo Go não carrega o projeto | Telefone em outra rede, ou o firewall do Windows bloqueia o Node (comum em rede marcada como Pública). Teste `http://<IP>:8081/status` no navegador do telefone |
 | "You need to be signed in to Expo Go and Expo CLI to open your project" | Rode `npx expo login` em `src/mobile`, entre com a mesma conta no Expo Go e reinicie o Expo |
 | O app mostra "Defina EXPO_PUBLIC_API_URL" | Falta o `src/mobile/.env` (passo 5b) |
+| O telefone continua mostrando uma tela antiga | O Expo Go reaproveitou o bundle guardado. Feche o Expo Go e suba em outra porta, que vira um endereço novo: `npx expo start --clear --port 8082` em `src/mobile` |

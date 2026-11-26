@@ -215,8 +215,9 @@ Quem conhece a web reconhece o app e acha o código no mesmo lugar. Vale para S1
 ## Execução
 
 **Estado em 2026-11-26:** prontas as telas **Entrar**, **Organizações** e **Conversa** (pedidos do
-usuário: primeiro só uma tela, depois o chat para ter o que testar). O login foi confirmado no
-telefone pelo usuário; o chat ainda não. Branch `mobile-app`, a partir de `origin/main` (`252f016`).
+usuário: primeiro só uma tela, depois o chat para ter o que testar). No telefone, o usuário confirmou
+o login e que a versão com as telas novas abriu; perguntar no chat ainda não foi confirmado. Branch
+`mobile-app`, a partir de `origin/main` (`252f016`).
 
 | # | Entrega | Estado | Checks |
 | --- | --- | --- | --- |
