@@ -247,9 +247,10 @@ npm run typecheck
 npm run bundle
 ```
 
-Ninguém ainda abriu o app num telefone: faça isso antes da próxima entrega. Se o Expo Go recusar o
-SDK 58, volte a decisão ao usuário (C52). No Windows, libere a porta 5295 no firewall se o telefone
-não alcançar a Api.
+A App Store já tem o Expo Go do SDK 58 (pergunta 1 das Assumptions respondida). No iPhone, ele exige
+entrar com a mesma conta Expo no app e no computador (`npx expo login`). O teste da tela num telefone
+ainda não foi confirmado: faça isso antes da próxima entrega. O passo a passo completo e os problemas
+comuns estão no [README](../../../README.md), passo 5.
 
 ### Regras para qualquer tela
 
