@@ -17,6 +17,7 @@ src/BuildYourOwnAI.Api/          Minimal APIs, EF Core, Identity, IA
   Common/                        o que 2+ slices usam: AskPipeline, DocumentIngestion, GapRecorder
   Infrastructure/                DbContext, migrations, registro de IA, current user
 src/web/                         React + TypeScript + Vite; `npm run build` gera o wwwroot da Api
+src/mobile/                      app React Native + Expo (em construção); segue o desenho da web (AD-017)
   src/features/<area>/           páginas, api hooks, types e testes por área; tokens visuais em src/index.css
 tests/BuildYourOwnAI.Api.Tests/  xUnit + WebApplicationFactory + Testcontainers (pgvector)
 src/web/src/**/*.test.tsx        Vitest + Testing Library + MSW
@@ -34,6 +35,8 @@ dotnet test                                           # precisa do Docker (Testc
 dotnet run --project src/BuildYourOwnAI.Api          # em Development cria admin@buildyourownai.local / Admin#2026
 cd src/web && npm install && npm run dev             # Vite em localhost:5173, proxy /api -> Api
 cd src/web && npm test
+cd src/mobile && npm install && npm start             # Expo Go; precisa de src/mobile/.env e da Api com --urls http://0.0.0.0:5295
+cd src/mobile && npm test && npm run typecheck
 dotnet ef migrations add <Name> --project src/BuildYourOwnAI.Api
 dotnet user-secrets set "AI:OpenAI:ApiKey" "<key>" --project src/BuildYourOwnAI.Api
 dotnet user-secrets set "AI:OpenRouter:ApiKey" "<key>" --project src/BuildYourOwnAI.Api   # escolha automática da IA

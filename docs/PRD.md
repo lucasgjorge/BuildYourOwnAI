@@ -53,6 +53,10 @@ O "tenant" continua sendo o usuário individual. Ele já agrupa as IAs em **orga
 | 4 - Monetizar | receita | planos, quotas de uso (perguntas, armazenamento), cobrança |
 | 5 - Times | uso organizacional | membros, papéis e convites nas organizações que já existem |
 
+**App mobile** (`src/mobile`, React Native + Expo), em paralelo às etapas: primeira versão com login e
+cadastro, organizações, chat com fontes e Lacunas. Em construção; prontas as telas de entrada, organizações e conversa
+([plano](../.specs/features/mobile-app/plan.md)).
+
 ## 6. Escopo da etapa 1
 
 Especificação detalhada, com critérios de aceite: [.specs/features/rag-mvp/plan.md](../.specs/features/rag-mvp/plan.md).
