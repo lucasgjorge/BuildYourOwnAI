@@ -1,4 +1,5 @@
 // Mirrors src/web/src/features/chat/Thread.tsx (organization scope).
+import { randomUUID } from 'expo-crypto'
 import { useRef, useState } from 'react'
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { ApiError, errorTitle } from '../../shared/api/client'
@@ -10,6 +11,7 @@ import { useAsk } from '../assistants/api'
 import type { OrganizationDetail } from '../organizations/types'
 import { useRouting } from '../routing/api'
 import type { AssistantRef } from '../routing/types'
+import { UsageModal } from './UsageModal'
 
 /** An AI the thread can talk to, with its lane color. */
 type Target = { id: string; name: string; color: string; routing?: string | null }
@@ -33,9 +35,12 @@ export function Thread({ organization }: { organization: OrganizationDetail }) {
   const routing = useRouting(organization.id)
   const ask = useAsk()
   const [entries, setEntries] = useState<Entry[]>([])
+  // The web uses crypto.randomUUID(); Expo Go gets it from expo-crypto. A new id each time the screen opens.
+  const [conversationId] = useState(() => randomUUID())
   const [message, setMessage] = useState('')
   const [target, setTarget] = useState(AUTO)
   const [pending, setPending] = useState<string | null>(null)
+  const [usageOpen, setUsageOpen] = useState(false)
   const nextKey = useRef(0)
   const list = useRef<FlatList<Entry>>(null)
 
@@ -62,7 +67,7 @@ export function Thread({ organization }: { organization: OrganizationDetail }) {
   // `replacing`: the clarify prompt the answer takes the place of, once an AI was picked from it.
   const askDirect = (question: string, to: Target, others: Target[], replacing?: number) => {
     setPending(`${to.name} está respondendo…`)
-    ask.mutate({ assistantId: to.id, question }, {
+    ask.mutate({ assistantId: to.id, question, conversationId }, {
       onSuccess: answer => {
         if (replacing !== undefined) setEntries(current => current.filter(e => e.key !== replacing))
         push({ kind: 'answer', question, by: to, routed: false, answer, others })
@@ -90,7 +95,7 @@ export function Thread({ organization }: { organization: OrganizationDetail }) {
 
     push({ kind: 'question', text: question, to: 'automático' })
     setPending('Escolhendo quem responde…')
-    routing.mutate({ question, previous }, {
+    routing.mutate({ question, previous, conversationId }, {
       onSuccess: response => {
         if (response.kind === 'answered')
           push({
@@ -174,6 +179,11 @@ export function Thread({ organization }: { organization: OrganizationDetail }) {
             <TargetOption key={t.id} label={t.name} color={t.color} checked={target === t.id} onPress={() => setTarget(t.id)} />
           ))}
         </ScrollView>
+        <View style={styles.usageRow}>
+          <Pressable role="button" onPress={() => setUsageOpen(true)}>
+            <Text style={styles.usageLink}>Uso de tokens</Text>
+          </Pressable>
+        </View>
         <View style={styles.row}>
           <TextInput
             accessibilityLabel="Mensagem"
@@ -187,6 +197,7 @@ export function Thread({ organization }: { organization: OrganizationDetail }) {
           <Button title="Enviar" onPress={send} disabled={!!pending} />
         </View>
       </View>
+      <UsageModal conversationId={conversationId} visible={usageOpen} onClose={() => setUsageOpen(false)} />
     </View>
   )
 }
@@ -338,6 +349,8 @@ const styles = StyleSheet.create({
   pending: { color: colors.route, fontFamily: fonts.mono, fontSize: 12, paddingTop: 16 },
   composer: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, gap: 10, padding: 12 },
   targets: { alignItems: 'center', gap: 8 },
+  usageRow: { alignItems: 'flex-end' },
+  usageLink: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14 },
   row: { alignItems: 'flex-end', flexDirection: 'row', gap: 8 },
   input: {
     backgroundColor: colors.fog,

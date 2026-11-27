@@ -4,6 +4,11 @@ import { saveTokens } from '../../shared/session'
 import { colors, fonts } from '../../shared/theme'
 import { fakeApi, tokens } from '../../test/api'
 
+// A predictable conversation id: each Thread that opens gets the next one.
+let mockIds = 0
+jest.mock('expo-crypto', () => ({ randomUUID: () => `conv-${++mockIds}` }))
+beforeEach(() => { mockIds = 0 })
+
 const summary = { id: 'o1', name: 'Nexora', createdAt: '2026-01-01', assistantCount: 2, documentCount: 3 }
 const rh = { id: 'a1', name: 'RH', routingDescription: 'férias e benefícios' }
 const tech = { id: 'a2', name: 'Tech', routingDescription: null }
@@ -38,8 +43,10 @@ async function ask(question: string) {
 }
 
 type Api = Awaited<ReturnType<typeof open>>
-const bodies = (api: Api, path: string) =>
+const rawBodies = (api: Api, path: string) =>
   api.mock.calls.filter(([url]) => url.endsWith(path)).map(([, init]) => JSON.parse(init!.body as string))
+// The conversation id has its own checks (CU6, CU7); the older ones compare only the question data.
+const bodies = (api: Api, path: string) => rawBodies(api, path).map(({ conversationId: _id, ...rest }) => rest)
 
 const disabled = (name: string) => screen.getByRole('button', { name }).props.accessibilityState?.disabled
 const color = (node: { props: { style?: unknown } }) => StyleSheet.flatten(node.props.style as object) as Record<string, unknown>
@@ -287,4 +294,52 @@ it('assistant lane color follows its position', async () => {
   await ask('oi')
 
   expect(color(await screen.findByText('Respondido por IA 2')).color).toBe(colors['lane-2'])
+})
+
+// CU6
+it('both ask routes send the same conversation id', async () => {
+  const api = await openChat({ [ROUTE]: answered(), [ASK_TECH]: { status: 200, body: answer } })
+
+  await ask('férias?')
+  await screen.findByText('São 30 dias.')
+  await fireEvent.press(screen.getByRole('button', { name: 'Perguntar a Tech' }))
+  await screen.findByText('Respondido por Tech')
+
+  expect(rawBodies(api, '/route/ask')[0].conversationId).toBe('conv-1')
+  expect(rawBodies(api, '/a2/ask')[0].conversationId).toBe('conv-1')
+})
+
+// CU7
+it('reopening organization starts a new conversation id', async () => {
+  const api = await open('/organizations', {
+    [LIST]: { status: 200, body: [summary] },
+    [ORG]: { status: 200, body: detail },
+    [ROUTE]: answered(),
+  })
+  await fireEvent.press(await screen.findByRole('button', { name: /Nexora/ }))
+  await ask('férias?')
+  await screen.findByText('São 30 dias.')
+
+  await fireEvent.press(screen.getByRole('button', { name: 'Voltar' }))
+  await act(() => jest.runOnlyPendingTimers())
+  await fireEvent.press(await screen.findByRole('button', { name: /Nexora/ }))
+  await ask('férias?')
+  await screen.findByText('São 30 dias.')
+
+  expect(rawBodies(api, '/route/ask').map(b => b.conversationId)).toEqual(['conv-1', 'conv-2'])
+})
+
+// CU8
+it('usage button opens the usage of this conversation', async () => {
+  await openChat({
+    [ROUTE]: answered(),
+    'GET /api/usage/conversations/conv-1': { status: 200, body: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } },
+  })
+  await ask('férias?')
+  await screen.findByText('São 30 dias.')
+
+  await fireEvent.press(screen.getByRole('button', { name: 'Uso de tokens' }))
+
+  expect(await screen.findByText('Total de tokens')).toBeTruthy()
+  expect(screen.getByText('15')).toBeTruthy()
 })

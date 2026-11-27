@@ -6,7 +6,7 @@ import type { AskResponse } from '../../shared/api/types'
 /** Asks one assistant directly. */
 export function useAsk() {
   return useMutation({
-    mutationFn: ({ assistantId, question }: { assistantId: string; question: string }) =>
-      postJson<AskResponse>(`/api/assistants/${assistantId}/ask`, { question }),
+    mutationFn: ({ assistantId, question, conversationId }: { assistantId: string; question: string; conversationId?: string }) =>
+      postJson<AskResponse>(`/api/assistants/${assistantId}/ask`, { question, conversationId }),
   })
 }
